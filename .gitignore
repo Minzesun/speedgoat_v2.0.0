@@ -1,0 +1,33 @@
+# MATLAB / Simulink generated files
+slprj/
+**/slprj/
+*_slrealtime_rtw/
+**/*_slrealtime_rtw/
+*_ert_rtw/
+*_grt_rtw/
+*_rtw/
+
+# Build and cache artifacts
+*.slxc
+*.mldatx
+*.mex*
+*.asv
+*.autosave
+*.bak
+*.log
+
+# Generated EtherCAT / codegen scratch files
+ecat_config_xml_*.c
+ecat_config_xml_*.h
+
+# Temporary / OS files
+*.tmp
+*.temp
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# MATLAB crash / profiling leftovers
+matlab_crash_dump.*
+*.stackdump
+
