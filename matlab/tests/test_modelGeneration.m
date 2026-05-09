@@ -18,6 +18,8 @@ verifyTrue(testCase, getSimulinkBlockHandle([modelName '/expected_network_state'
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/SV660N Sequence Controller']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/speed_command_60ff']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/speed_limit_607f']) > 0);
+verifyTrue(testCase, getSimulinkBlockHandle([modelName '/Rx Position actual 6064']) > 0);
+verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_actual_6064']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/diag_lookup_hint']) > 0);
 clear closeCleanup;
 

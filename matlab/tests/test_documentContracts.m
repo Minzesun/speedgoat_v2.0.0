@@ -33,5 +33,6 @@ verifyTrue(testCase, contains(reference, 'EtherCAT 手册'));
 verifyTrue(testCase, contains(reference, 'SV660N 手册'));
 verifyTrue(testCase, contains(reference, '603Fh'));
 verifyTrue(testCase, contains(reference, '6041h'));
+verifyTrue(testCase, contains(reference, '6064h'));
 verifyTrue(testCase, contains(reference, '60FFh'));
 end

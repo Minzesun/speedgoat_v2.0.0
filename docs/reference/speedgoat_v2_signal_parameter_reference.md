@@ -6,6 +6,7 @@
 | `expected_network_state` | 期望网络状态，固定为 `8` | Constant command source | 同屏对照 `actual_network_state` 和 `diag_lookup_hint` | EtherCAT 手册的状态机章节 |
 | `statusword_6041` | 驱动状态字 | `1B04h Inputs` | 在 `Signals` 里看是否随 `ready_to_run` 变化到位 | SV660N 手册的 `6041h` / CiA402 状态机章节 |
 | `error_code_603f` | 驱动错误码 | `1B04h Inputs` | 在 `Signals` 里先看是否非零，再看 `diag_lookup_hint` | SV660N 手册的 `603Fh` 错误码章节 |
+| `position_actual_6064` | 实际位置 | `1B04h Inputs` | 在 `Signals` 里看位置反馈是否随运动变化 | SV660N 手册的 `6064h` 位置反馈对象章节 |
 | `mode_display_6061` | 模式显示 | `1B04h Inputs` | 在 `Signals` 里确认是否为 CSV 对应模式 | SV660N 手册的 `6061h` 模式章节 |
 | `velocity_actual_606c` | 实际速度 | `1B04h Inputs` | 在 `Signals` 里确认起机前接近 `0`、运行中变化合理 | SV660N 手册的 `606Ch` 速度反馈对象章节 |
 | `diag_code` | 运行诊断代码 | Sequence Controller | 在 `Diagnostics` 里先看它是否为 `0` | Sequence Controller 对应的诊断码定义 |

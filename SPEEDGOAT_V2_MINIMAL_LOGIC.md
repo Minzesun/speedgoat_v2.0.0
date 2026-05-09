@@ -153,12 +153,13 @@ actual_network_state -> StartupChart input 1
 
 ### 3.3 PDO Receive: 从驱动读
 
-`1B04h Inputs` 当前只取四个量：
+`1B04h Inputs` 当前取五个量：
 
 | 信号 | 对象 | 偏移 | 类型 | 进入 chart |
 |---|---|---:|---|---|
 | `error_code_603f` | `603Fh` Error code | `568` | `uint16` | input 4 |
 | `statusword_6041` | `6041h` Statusword | `584` | `uint16` | input 3 |
+| `position_actual_6064` | `6064h` Position actual value | `600` | `int32` | input 4 |
 | `mode_display_6061` | `6061h` Mode display | `648` | `int8` | input 5 |
 | `velocity_actual_606c` | `606Ch` Actual velocity | `768` | `int32` | input 6 |
 
@@ -568,6 +569,7 @@ matlab/model/+sgv2/+internal/addObservabilityPorts.m
 | `statusword_6041` | PDO Rx |
 | `error_code_603f` | PDO Rx |
 | `mode_display_6061` | PDO Rx |
+| `position_actual_6064` | PDO Rx |
 | `velocity_actual_606c` | PDO Rx |
 | `diag_code` | StartupChart |
 | `diag_message_id` | StartupChart |
