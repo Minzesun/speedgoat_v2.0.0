@@ -17,7 +17,7 @@ for k = 1:numel(names)
 end
 end
 
-function testRawSlbuildWorksWithoutManualBaseWorkspaceTunables(testCase)
+function testApplicationBuildExportsPositionTunables(testCase)
 target = target_minimal_slrtexplorer();
 modelName = char(target.ModelName);
 matlabRoot = fileparts(fileparts(mfilename('fullpath')));
@@ -25,24 +25,42 @@ originalDir = pwd;
 cd(matlabRoot);
 dirCleanup = onCleanup(@() cd(originalDir));
 
-build_speedgoat_v2_minimal();
-evalin('base', 'clear(''SGV2_SPEED_COMMAND_60FF'', ''SGV2_SPEED_LIMIT_607F'')');
+evalin('base', ['clear(' ...
+    '''SGV2_SPEED_COMMAND_60FF'', ' ...
+    '''SGV2_SPEED_LIMIT_607F'', ' ...
+    '''SGV2_POSITION_COMMAND_6064'', ' ...
+    '''SGV2_POSITION_RATE_COMMAND_6064'')']);
 
-closeLoadedModel(modelName);
-load_system(modelName);
-closeCleanup = onCleanup(@() closeLoadedModel(modelName));
+appPath = build_speedgoat_v2_minimal_app();
+verifyTrue(testCase, isfile(appPath));
+verifyPackageContainsPositionTunables(testCase, appPath);
 
-thrown = [];
-try
-    slbuild(modelName);
-catch ME
-    thrown = ME;
+legacyAppPath = fullfile(matlabRoot, 'model', [modelName '.mldatx']);
+verifyTrue(testCase, isfile(legacyAppPath));
+verifyPackageContainsPositionTunables(testCase, legacyAppPath);
+
+clear dirCleanup;
 end
 
-verifyEmpty(testCase, thrown, ...
-    'Expected raw load_system + slbuild to work without manual base-workspace tunables.');
-clear closeCleanup;
-clear dirCleanup;
+function testApplicationBuildBootstrapsProjectPath(testCase)
+target = target_minimal_slrtexplorer();
+modelName = char(target.ModelName);
+matlabRoot = fileparts(fileparts(mfilename('fullpath')));
+originalPath = path;
+originalDir = pwd;
+cleanup = onCleanup(@() localRestoreMatlabState(originalPath, originalDir, modelName)); %#ok<NASGU>
+
+rmpath(genpath(matlabRoot));
+addpath(fullfile(matlabRoot, 'config'));
+addpath(fullfile(matlabRoot, 'model'));
+cd(matlabRoot);
+
+appPath = build_speedgoat_v2_minimal_app();
+verifyTrue(testCase, isfile(appPath));
+verifyNotEmpty(testCase, which('sgv2.control.computePositionLoopGate'));
+verifyPackageContainsPositionTunables(testCase, appPath);
+
+clear cleanup;
 end
 
 function closeLoadedModel(modelName)
@@ -50,4 +68,27 @@ if bdIsLoaded(modelName)
     set_param(modelName, 'Dirty', 'off');
     close_system(modelName, 0);
 end
+end
+
+function localRestoreMatlabState(originalPath, originalDir, modelName)
+closeLoadedModel(modelName);
+path(originalPath);
+cd(originalDir);
+end
+
+function verifyPackageContainsPositionTunables(testCase, appPath)
+tempRoot = tempname;
+mkdir(tempRoot);
+cleanup = onCleanup(@() rmdir(tempRoot, 's')); %#ok<NASGU>
+unzip(appPath, tempRoot);
+
+paramInfoPath = fullfile(tempRoot, 'paramSet', 'paramInfo.json');
+paramInfo = fileread(paramInfoPath);
+verifyTrue(testCase, contains(paramInfo, 'SGV2_POSITION_COMMAND_6064'));
+verifyTrue(testCase, contains(paramInfo, 'SGV2_POSITION_RATE_COMMAND_6064'));
+verifyTrue(testCase, contains(paramInfo, 'SGV2_POSITION_LOOP_ENABLED'));
+verifyTrue(testCase, contains(paramInfo, 'SGV2_POSITION_LOOP_KP'));
+verifyTrue(testCase, contains(paramInfo, 'SGV2_POSITION_LOOP_KI'));
+verifyTrue(testCase, contains(paramInfo, 'SGV2_POSITION_LOOP_KD'));
+verifyTrue(testCase, contains(paramInfo, 'SGV2_MAX_TRACKING_SPEED'));
 end

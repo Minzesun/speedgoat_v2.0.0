@@ -6,11 +6,12 @@
 
 - 目标应用名：`speedgoat_v2_minimal`
 - 目标文件：`matlab/model/models/speedgoat_v2_minimal.slx`
-- 本地构建产物：`matlab/speedgoat_v2_minimal.mldatx`
+- 本地应用包：`matlab/speedgoat_v2_minimal.mldatx`（同时镜像到 `matlab/model/speedgoat_v2_minimal.mldatx` 方便旧入口）
 - 运行方式：以 `slrtExplorer` 加载、启动、观察和人工下发速度
 - 控制对象：单轴 SV660N，CSV 模式
 - EtherCAT 数据面：只使用 `1702h Outputs + 1B04h Inputs`
 - 自动逻辑边界：自动上电/上使能到 `ready_to_run`，非零速度仍由人工给定
+- 文档同步边界：当前已实现逻辑和后续规划流程要分开写；凡是新增文件、信号或函数，都要补上“目的、默认值、怎么看、怎么复现、什么时候停”
 
 ## 1. 代码入口和生成链路
 
@@ -28,7 +29,23 @@ matlab/model/build_speedgoat_v2_minimal.m
 modelPath = sgv2.internal.buildMinimalModel(target_minimal_slrtexplorer());
 ```
 
-也就是说，模型不是手工拖出来的，而是由配置合同 `target_minimal_slrtexplorer()` 驱动生成。
+如果你要生成可加载到 `slrtExplorer` 的应用包，入口是：
+
+```matlab
+matlab/model/build_speedgoat_v2_minimal_app.m
+```
+
+它会先自动补齐项目内 MATLAB path，再生成 `.slx`，执行 `slbuild`，并同步更新 `matlab/speedgoat_v2_minimal.mldatx` 与 `matlab/model/speedgoat_v2_minimal.mldatx`。
+
+路径自举入口是：
+
+```matlab
+matlab/model/bootstrap_speedgoat_v2_path.m
+```
+
+这样操作员只要能调用 `build_speedgoat_v2_minimal_app`，就不需要手动把 `config`、`control`、`model` 等目录逐个加入 path；否则 Stateflow 生成 `PT-5 Position Loop/PositionLoopChart` 时可能找不到 `sgv2.control.*` helper。
+
+也就是说，模型不是手工拖出来的，而是由配置合同 `target_minimal_slrtexplorer()` 驱动生成，应用包再由同一份模型继续编译出来。
 
 ### 1.2 配置合同
 
@@ -57,6 +74,10 @@ matlab/config/target_minimal_slrtexplorer.m
 | `ExpectedModeOfOperation` | `9` | CSV 模式 |
 | `SGV2_SPEED_COMMAND_60FF` | `int32(0)` 默认 | 人工速度命令 |
 | `SGV2_SPEED_LIMIT_607F` | `uint32(1000)` 默认 | 保守速度上限 |
+| `DefaultIdentificationMaxSpeed60FF` | `int32(200)` 默认 | 辨识阶段保守速度上限 |
+| `DefaultIdentificationMaxTravel6064` | `int32(1000)` 默认 | 辨识阶段单次最大位移 |
+| `DefaultIdentificationStep6064` | `int32(100)` 默认 | 辨识阶段小步长 |
+| `DefaultIdentificationStopBand6064` | `int32(20)` 默认 | 辨识阶段停止带 |
 
 ### 1.3 模型生成函数
 
@@ -159,7 +180,7 @@ actual_network_state -> StartupChart input 1
 |---|---|---:|---|---|
 | `error_code_603f` | `603Fh` Error code | `568` | `uint16` | input 4 |
 | `statusword_6041` | `6041h` Statusword | `584` | `uint16` | input 3 |
-| `position_actual_6064` | `6064h` Position actual value | `600` | `int32` | input 4 |
+| `position_actual_6064` | `6064h` Position actual value | `600` | `int32` | 顶层观测，不进入 chart 判定 |
 | `mode_display_6061` | `6061h` Mode display | `648` | `int8` | input 5 |
 | `velocity_actual_606c` | `606Ch` Actual velocity | `768` | `int32` | input 6 |
 
@@ -173,6 +194,8 @@ actual_network_state -> StartupChart input 1
 | `velocity_command_60ff` | `60FFh` Target velocity | `616` | `int32` | output 2 |
 | `mode_command_6060` | `6060h` Mode of operation | `664` | `int8` | output 3 |
 | `speed_limit_out_607f` | `607Fh` Max profile velocity | `688` | `uint32` | output 4 |
+
+`position_actual_6064` 目前只作为顶层观察信号保留，方便 `slrtExplorer` 看位移是否真的在动。它不参与当前 `StartupChart` 的使能判定，也不参与速度命令生成。
 
 ## 4. 人工命令入口
 
@@ -649,6 +672,9 @@ WAIT_BUS_OP
 - 不做多轴。
 - 不做 TwinCAT。
 - 不引入旧 `demo_stable`。
+- 不做位置闭环。
+- 不做位置逆模型。
+- 不做位置给定轨迹自动生成。
 
 如果后续要增强现场调试能力，最值得加的是：
 
@@ -656,4 +682,219 @@ WAIT_BUS_OP
 - 首次故障快照：锁存第一次出现故障时的 `603Fh / 6041h / 6061h / 606Ch / command`。
 - 运行计时器：记录从 `READY_TO_RUN` 到故障出现的时间。
 - 可调速度斜坡：避免人工速度阶跃太硬。
+
+## 15. 位置跟踪扩展的操作流程（规划中）
+
+这一节不是当前 `.slx` 已经实现的逻辑，而是 PT-2 到 PT-8 的操作说明。写在这里的目的，是让操作员以后可以按同一套步骤复现数据辨识、逆模型和位置环，而不是每次靠口头传授。
+这里说的“采集”，指的是在 `slrtExplorer` 运行模型时对原始信号做实时记录并同步导出，不是人工抄录。
+
+采集元数据格式和完整记录流程已经单独写在：
+
+```text
+docs/field_validation/speedgoat_v2_position_identification.md
+```
+
+数据目录的保存说明写在：
+
+```text
+data/field_validation/README.md
+```
+
+### 15.1 目标
+
+先保留当前 CSV 速度模式和 `ready_to_run` 门禁，再用现场数据辨识 `speed_command_60ff` / `velocity_actual_606c` / `position_actual_6064` 的动态关系，最后把外层位置 PID 的输出接回现有 `60FFh` 速度命令。
+
+### 15.2 现场准备
+
+1. 连接目标机，加载 `speedgoat_v2_minimal`。
+2. 打开至少这些信号：
+   - `actual_network_state`
+   - `statusword_6041`
+   - `error_code_603f`
+   - `position_actual_6064`
+   - `velocity_actual_606c`
+   - `ready_to_run`
+   - `auto_start_step`
+   - `speed_command_60ff`
+3. 确认 `ready_to_run == 1` 之前，`speed_command_60ff` 必须保持 `0`。
+4. 未来位置跟踪版本会把最大速度和最大单次位移做成可调参数，默认值先用原始 `60FF / 6064` 单位的保守值。
+
+规划中的最小可调字段是：
+
+| 字段 | 含义 | 操作员怎么理解 |
+|---|---|---|
+| `IdentificationMaxSpeed60FF` | 辨识时允许使用的最大速度命令 | `200` | 数值越大，试验运动越快；首次保持保守 |
+| `IdentificationMaxTravel6064` | 单次辨识允许离开起点的最大位置变化 | `1000` | 超过这个范围就应停止或回零 |
+| `IdentificationStep6064` | 每次小步位置变化的参考量 | `100` | 用来做低风险阶跃/阶梯试验 |
+| `IdentificationStopBand6064` | 判定接近目标或需要停止的误差带 | `20` | 位置误差进到这个范围内就不再继续加速 |
+| `IdentificationTransientGuardSamples` | 线性拟合时换向后剔除的采样点数 | `1` | 只影响离线分析，不改模型本身 |
+| `PositionVelocityGain` | 逆模型斜率，来源于单位假设或 `K_cmd` | `1` | 当前按 `60FF` 命令单位就是 `mm/s` 处理 |
+| `PositionVelocityBias` | 逆模型偏置，来源于 `B_cmd` | `0` | 首版先用 `0`，后续按现场结果更新 |
+| `CommandDeadband` | 逆模型命令死区 | `0` | 小命令先压回 `0`，避免抖动 |
+| `CommandDelaySamples` | 速度命令延迟样本数 | `0` | 首版静态前馈不启用延迟补偿 |
+| `MaxTrackingSpeed` | 位置环输出的速度上限 | `6000` | 现在就是线速度饱和值，按 `mm/s` 直通假设使用 |
+| `PositionUnitMillimetersPerCount6064` | `6064` 位置单位到毫米的换算系数 | `1` | 当前按 `position_actual_6064` 单位为 `mm` 处理 |
+| `PositionLoopEnabled` | 位置环使能，整型 0/1 | `0` | 外部轨迹输入接入后默认仍关闭，防止未调参就闭环 |
+| `PositionLoopKp` | 位置环比例增益的千分之一整数刻度 | `0` | 模型内部按 `value * 0.001` 转成实际 `Kp` |
+| `PositionLoopKi` | 位置环积分增益的千分之一整数刻度 | `0` | 模型内部按 `value * 0.001` 转成实际 `Ki` |
+| `PositionLoopKd` | 位置环微分增益的千分之一整数刻度 | `0` | 模型内部按 `value * 0.001` 转成实际 `Kd` |
+| `PositionLoopSampleTime` | 位置环离散采样时间 | `0.002` | 与当前模型固定步长一致 |
+| `PositionLoopIntegratorLimit` | 位置环积分限幅 | `0` | 首版积分保持关闭状态 |
+
+### 15.3 数据采集
+
+后续做辨识时，推荐在 `slrtExplorer` 中实时记录并导出：
+
+- 时间戳
+- `ready_to_run`
+- `speed_command_60ff`
+- `velocity_command_60ff`
+- `velocity_actual_606c`
+- `position_actual_6064`
+- `statusword_6041`
+- `error_code_603f`
+
+推荐的低风险输入顺序是：
+
+1. 零速保持
+2. 小正向阶跃
+3. 小反向阶跃
+4. 分段速度阶梯
+5. 低速三角或梯形位移
+
+每次试验都要满足：
+
+- 没有故障
+- 没有超出保守默认值
+- 试验结束后把速度手动降回 `0`
+
+### 15.4 结果复现
+
+数据文件建议放在：
+
+```text
+data/field_validation/YYYYMMDD_axis1_ident_<direction>_<speed>.mat
+data/field_validation/YYYYMMDD_axis1_ident_<direction>_<speed>.csv
+```
+
+每份数据都应该能回答四个问题：
+
+- 这次试验输入了什么
+- 这次试验观察到了什么
+- 这个结果支持哪条线性/非线性假设
+- 这次试验是否需要重做
+
+### 15.5 PT-5 位置环怎么用
+
+PT-5 的外部轨迹位置环现在已经接进模型了，但默认参数仍然保守，外部闭环也默认关闭。操作员应先看：
+
+- `task_plan.md` 里的 PT-3 到 PT-5
+- `findings.md` 里的辨识结论
+- `docs/reference/speedgoat_v2_signal_parameter_reference.md`
+- `docs/field_validation/speedgoat_v2_minimal.md`
+
+然后再决定是先只开逆模型前馈，还是同时开位置 PID。顶层模型里需要关注四个运行信号：`position_command_6064`、`position_rate_command_6064`、`position_actual_6064` 和 `ready_to_run`。为了让 `slrtExplorer` 的 `Parameters` 页签直接显示现场调参项，位置环使能、PID、积分限幅、前馈比例和最大跟踪速度由顶层 Constant 块引用 model workspace tunable，再接入 `PT-5 Position Loop`。
+
+在 `slrtExplorer` 的 `Parameters` 页签里，轨迹给定不是直接改 `position_command_6064` / `position_rate_command_6064`，而是改：
+
+- `SGV2_POSITION_COMMAND_6064`
+- `SGV2_POSITION_RATE_COMMAND_6064`
+- `SGV2_POSITION_LOOP_ENABLED`
+- `SGV2_POSITION_LOOP_KP`
+- `SGV2_POSITION_LOOP_KI`
+- `SGV2_POSITION_LOOP_KD`
+- `SGV2_POSITION_LOOP_INTEGRATOR_LIMIT`
+- `SGV2_MAX_TRACKING_SPEED`
+
+前两个是位置给定和轨迹速度前馈，后面是位置环门禁、PID 和保护限幅。对应的 `position_command_6064` 和 `position_rate_command_6064` 在 `Signals` 页签里用来确认参数已经进入模型。
+
+为了匹配现场 `slrtExplorer` 的参数显示行为，位置环门禁、PID、积分限幅、死区和最大跟踪速度都按 `int32` 暴露。`SGV2_POSITION_LOOP_ENABLED` 用 `0/1`；`SGV2_POSITION_LOOP_KP/KI/KD` 是千分之一增益整数，例如 `10` 表示实际增益 `0.010`。
+
+`position_loop_speed_command_60ff` 到启动控制器之间放了一个一拍 `Unit Delay`，这样可以打掉位置环与启动控制器之间的代数环，`speed_command_60ff` 看到的是实际送进控制器的那一路命令。
+
+如果是外部轨迹输入版本，位置环会同时看两个给定：
+
+- `position_command_6064`
+- `position_rate_command_6064`
+
+外部轨迹进来后，位置环的内部量依次是：
+
+- `position_error_6064`
+- `position_ff_velocity_60ff`
+- `position_pid_velocity_60ff`
+- `position_loop_speed_command_60ff`
+- `position_loop_enabled`
+
+采集后的第一步摘要会由 `sgv2.analysis.summarizeIdentificationCapture(capture)` 负责，它会先检查采集是否超包络、有没有故障，再给出位置增量和速度误差摘要。
+
+摘要通过后，第二步用 `sgv2.analysis.fitIdentificationRelationship(capture)` 做第一版线性拟合，先从稳定区间估 `K_cmd / B_cmd / RSquared`，再决定逆模型是否只用线性前馈，还是需要额外补延迟和一阶环节。这个拟合会同时返回 `Selection.TransientMask` 和 `Selection.ValidMask`，让操作员知道哪些点被换向保护和包络过滤踢掉了。
+
+### 15.6 逆模型前馈
+
+逆模型前馈先由 `sgv2.control.computeInverseFeedforward(position_rate_ref, params)` 负责，它把期望位置变化率换算成 `speed_ff`，再做死区、限幅和模型无效回退。
+
+最简单的换算公式是：
+
+```text
+speed_ff = (position_rate_ref - PositionVelocityBias) / PositionVelocityGain
+```
+
+当前先采用用户现场假设：`60FF` 速度命令单位就是线速度 `mm/s`，`position_actual_6064` 按 `mm` 理解。因此默认 `PositionVelocityGain = 1`、`PositionVelocityBias = 0`，逆模型前馈近似为直通，线速度饱和值固定为 `6000`：
+
+```text
+speed_ff = position_rate_ref
+```
+
+如果以后现场发现单位不是 `mm/s`、参数缺失，或者最大跟踪速度无效，这个函数仍可以回退到零速度，避免把错误单位带进现场。
+
+位置环门禁先由 `sgv2.control.computePositionLoopGate(ready_to_run, position_loop_enabled_request)` 处理，它只在 `ready_to_run == 1` 且位置环使能请求打开时才允许位置环输出非零速度。
+
+位置环本体则由 `sgv2.control.computePositionLoopCommand(position_command_6064, position_rate_command_6064, position_actual_6064, params, state)` 负责，它把外部轨迹位置和轨迹速度合成一个最终速度命令，并输出：
+
+- `position_error_6064`
+- `position_ff_velocity_60ff`
+- `position_pid_velocity_60ff`
+- `position_loop_speed_command_60ff`
+
+这样在 Simulink 里，外层只用把四个真实输入接进 `PT-5 Position Loop`，再把最终速度命令送回现有 `60FFh` 通道即可。位置环参数留在子系统内部，不把顶层模型撑乱。门禁逻辑单独收在 `computePositionLoopGate`，方便以后继续补 fault / mode 规则。
+其中的最终速度命令会先经过一拍延迟，再进入启动控制器，避免形成代数环。
+
+### 15.7 PT-8 低速小位移调参
+
+PT-8 不做大行程，只做低速、小位移、单参数递进的现场调参。操作员先读 `docs/field_validation/speedgoat_v2_position_tuning.md`，再在 `slrtExplorer` 里看：
+
+- `position_command_6064`
+- `position_rate_command_6064`
+- `position_actual_6064`
+- `position_error_6064`
+- `position_ff_velocity_60ff`
+- `position_pid_velocity_60ff`
+- `position_loop_speed_command_60ff`
+- `position_loop_enabled`
+
+调参顺序先是前馈，再是小 `P`，最后才考虑很小的 `I` 或 `D`。任何时候只要出现方向反了、误差变大、抖动、冲顶，或者 `ready_to_run` / `statusword_6041` / `error_code_603f` 异常，就立刻停回零速。
+
+## 16. 新文件和新功能的写法约定
+
+以后只要新加文件、函数或信号，就尽量按下面的格式写，方便操作员理解和复现：
+
+1. 先写清楚“它解决什么问题”。
+2. 再写“它依赖什么输入、输出什么结果”。
+3. 再写“默认值是什么，为什么保守”。
+4. 再写“在 `slrtExplorer` 里看哪里”。
+5. 再写“怎么复现一次正常流程”。
+6. 最后写“什么情况下必须停下来”。
+
+命名也尽量统一：
+
+- 模型顶层信号用 `snake_case`，并保留对象号后缀，例如 `position_actual_6064`
+- tunable 用 `SGV2_` 前缀加大写下划线，方便操作员一眼认出可调项
+- 原始对象单位优先，工程单位转换以后再加
+- 如果功能还在规划中，就明确标 `规划中`，不要让人误以为已经在当前 `.slx` 里生效
+
+新功能如果会影响现场操作，还要额外补三件事：
+
+- runbook 里的步骤
+- signal/parameter reference 里的信号表
+- `task_plan.md` / `findings.md` 里的约束和结论
 

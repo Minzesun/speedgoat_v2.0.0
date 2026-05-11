@@ -3,8 +3,7 @@ modelName = char(target.ModelName);
 
 items = { ...
     'command_expected_network_state', sprintf('int32(%d)', target.Ethercat.ExpectedNetworkState), [360 45 520 75], 2; ...
-    'command_speed_command_60ff', target.Tunables.SpeedCommand60FF, [360 90 520 120], 7; ...
-    'command_speed_limit_607f', target.Tunables.SpeedLimit607F, [360 135 520 165], 8};
+    'command_speed_limit_607f', target.Tunables.SpeedLimit607F, [360 90 520 120], 8};
 
 for k = 1:size(items, 1)
     blockPath = [modelName '/' items{k, 1}];
