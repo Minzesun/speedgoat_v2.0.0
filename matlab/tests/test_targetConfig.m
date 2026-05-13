@@ -44,6 +44,8 @@ verifyEqual(testCase, fieldnames(target.AxisConfig), { ...
     'DefaultIdentificationMaxTravel6064'
     'DefaultIdentificationStep6064'
     'DefaultIdentificationStopBand6064'
+    'DefaultPositionReferenceFile'
+    'DefaultPositionReferenceFeedforwardEnabled'
     'DefaultPositionCommand6064'
     'DefaultPositionRateCommand6064'
     'DefaultPositionVelocityGain'
@@ -52,7 +54,6 @@ verifyEqual(testCase, fieldnames(target.AxisConfig), { ...
     'DefaultCommandDelaySamples'
     'DefaultMaxTrackingSpeed'
     'DefaultPositionUnitMillimetersPerCount6064'
-    'DefaultPositionLoopEnabled'
     'DefaultPositionLoopKp'
     'DefaultPositionLoopKi'
     'DefaultPositionLoopKd'
@@ -78,6 +79,7 @@ verifyEqual(testCase, fieldnames(target.Tunables), { ...
     'IdentificationMaxTravel6064'
     'IdentificationStep6064'
     'IdentificationStopBand6064'
+    'PositionReferenceFeedforwardEnabled'
     'PositionCommand6064'
     'PositionRateCommand6064'
     'PositionVelocityGain'
@@ -86,7 +88,6 @@ verifyEqual(testCase, fieldnames(target.Tunables), { ...
     'CommandDelaySamples'
     'MaxTrackingSpeed'
     'PositionUnitMillimetersPerCount6064'
-    'PositionLoopEnabled'
     'PositionLoopKp'
     'PositionLoopKi'
     'PositionLoopKd'
@@ -106,6 +107,8 @@ verifyEqual(testCase, fieldnames(target.Signals), { ...
     'DiagLookupHint'
     'ReadyToRun'
     'AutoStartStep'
+    'PositionReference6064'
+    'PositionRateReference6064'
     'PositionCommand6064'
     'PositionRateCommand6064'
     'PositionError6064'
@@ -133,6 +136,9 @@ verifyEqual(testCase, target.AxisConfig.DefaultIdentificationMaxSpeed60FF, int32
 verifyEqual(testCase, target.AxisConfig.DefaultIdentificationMaxTravel6064, int32(1000));
 verifyEqual(testCase, target.AxisConfig.DefaultIdentificationStep6064, int32(100));
 verifyEqual(testCase, target.AxisConfig.DefaultIdentificationStopBand6064, int32(20));
+verifyEqual(testCase, target.AxisConfig.DefaultPositionReferenceFile, ...
+    "data/reference/position_reference_6064.txt");
+verifyEqual(testCase, target.AxisConfig.DefaultPositionReferenceFeedforwardEnabled, int32(1));
 verifyEqual(testCase, target.AxisConfig.DefaultPositionCommand6064, int32(0));
 verifyEqual(testCase, target.AxisConfig.DefaultPositionRateCommand6064, int32(0));
 verifyEqual(testCase, target.AxisConfig.DefaultPositionVelocityGain, int32(1));
@@ -141,7 +147,6 @@ verifyEqual(testCase, target.AxisConfig.DefaultCommandDeadband, int32(0));
 verifyEqual(testCase, target.AxisConfig.DefaultCommandDelaySamples, uint32(0));
 verifyEqual(testCase, target.AxisConfig.DefaultMaxTrackingSpeed, int32(6000));
 verifyEqual(testCase, target.AxisConfig.DefaultPositionUnitMillimetersPerCount6064, double(1));
-verifyEqual(testCase, target.AxisConfig.DefaultPositionLoopEnabled, int32(0));
 verifyEqual(testCase, target.AxisConfig.DefaultPositionLoopKp, int32(0));
 verifyEqual(testCase, target.AxisConfig.DefaultPositionLoopKi, int32(0));
 verifyEqual(testCase, target.AxisConfig.DefaultPositionLoopKd, int32(0));
@@ -151,6 +156,7 @@ verifyEqual(testCase, target.Tunables.IdentificationMaxSpeed60FF, "SGV2_IDENTIFI
 verifyEqual(testCase, target.Tunables.IdentificationMaxTravel6064, "SGV2_IDENTIFICATION_MAX_TRAVEL_6064");
 verifyEqual(testCase, target.Tunables.IdentificationStep6064, "SGV2_IDENTIFICATION_STEP_6064");
 verifyEqual(testCase, target.Tunables.IdentificationStopBand6064, "SGV2_IDENTIFICATION_STOP_BAND_6064");
+verifyEqual(testCase, target.Tunables.PositionReferenceFeedforwardEnabled, "SGV2_POSITION_REFERENCE_FEEDFORWARD_ENABLED");
 verifyEqual(testCase, target.Tunables.PositionCommand6064, "SGV2_POSITION_COMMAND_6064");
 verifyEqual(testCase, target.Tunables.PositionRateCommand6064, "SGV2_POSITION_RATE_COMMAND_6064");
 verifyEqual(testCase, target.Tunables.PositionVelocityGain, "SGV2_POSITION_VELOCITY_GAIN");
@@ -159,10 +165,13 @@ verifyEqual(testCase, target.Tunables.CommandDeadband, "SGV2_COMMAND_DEADBAND");
 verifyEqual(testCase, target.Tunables.CommandDelaySamples, "SGV2_COMMAND_DELAY_SAMPLES");
 verifyEqual(testCase, target.Tunables.MaxTrackingSpeed, "SGV2_MAX_TRACKING_SPEED");
 verifyEqual(testCase, target.Tunables.PositionUnitMillimetersPerCount6064, "SGV2_POSITION_UNIT_MILLIMETERS_PER_COUNT_6064");
-verifyEqual(testCase, target.Tunables.PositionLoopEnabled, "SGV2_POSITION_LOOP_ENABLED");
 verifyEqual(testCase, target.Tunables.PositionLoopKp, "SGV2_POSITION_LOOP_KP");
 verifyEqual(testCase, target.Tunables.PositionLoopKi, "SGV2_POSITION_LOOP_KI");
 verifyEqual(testCase, target.Tunables.PositionLoopKd, "SGV2_POSITION_LOOP_KD");
 verifyEqual(testCase, target.Tunables.PositionLoopSampleTime, "SGV2_POSITION_LOOP_SAMPLE_TIME");
 verifyEqual(testCase, target.Tunables.PositionLoopIntegratorLimit, "SGV2_POSITION_LOOP_INTEGRATOR_LIMIT");
+verifyEqual(testCase, target.Signals.PositionReference6064, "position_reference_6064");
+verifyEqual(testCase, target.Signals.PositionRateReference6064, "position_rate_reference_6064");
+verifyFalse(testCase, isfield(target.Tunables, 'PositionLoopEnabled'));
+verifyFalse(testCase, isfield(target.AxisConfig, 'DefaultPositionLoopEnabled'));
 end
