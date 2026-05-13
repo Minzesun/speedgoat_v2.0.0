@@ -67,9 +67,7 @@ paramInfoPath = fullfile(tempRoot, 'paramSet', 'paramInfo.json');
 paramInfo = fileread(paramInfoPath);
 
 requiredTokens = { ...
-    'SGV2_POSITION_COMMAND_6064'
-    'SGV2_POSITION_RATE_COMMAND_6064'
-    'SGV2_POSITION_LOOP_ENABLED'
+    'SGV2_POSITION_REFERENCE_FEEDFORWARD_ENABLED'
     'SGV2_POSITION_LOOP_KP'
     'SGV2_POSITION_LOOP_KI'
     'SGV2_POSITION_LOOP_KD'
@@ -79,6 +77,14 @@ for k = 1:numel(requiredTokens)
     if ~contains(paramInfo, requiredTokens{k})
         error('sgv2:ApplicationPackageMissingTunables', ...
             'Package %s is missing %s.', appPath, requiredTokens{k});
+    end
+end
+
+forbiddenTokens = {'SGV2_POSITION_LOOP_ENABLED'};
+for k = 1:numel(forbiddenTokens)
+    if contains(paramInfo, forbiddenTokens{k})
+        error('sgv2:ApplicationPackageForbiddenTunable', ...
+            'Package %s still exposes %s.', appPath, forbiddenTokens{k});
     end
 end
 end
