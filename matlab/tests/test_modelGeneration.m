@@ -17,8 +17,14 @@ verifyTrue(testCase, getSimulinkBlockHandle([modelName '/EtherCAT Get State']) >
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/expected_network_state']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/SV660N Sequence Controller']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/PT-5 Position Loop']) > 0);
+verifyTrue(testCase, getSimulinkBlockHandle([modelName '/Position Reference Source']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/speed_command_60ff']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/speed_limit_607f']) > 0);
+verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_reference_6064']) > 0);
+verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_rate_reference_6064']) > 0);
+verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_reference_values_6064']) > 0);
+verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_rate_reference_values_6064']) > 0);
+verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_reference_feedforward_enabled']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_command_6064']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_rate_command_6064']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_loop_enabled_request']) > 0);
@@ -27,17 +33,17 @@ verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_loop_ki']) > 0
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_loop_kd']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/max_tracking_speed']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_loop_speed_command_60ff_delay']) > 0);
-verifyEqual(testCase, get_param([modelName '/position_command_6064'], 'BlockType'), 'Constant');
-verifyEqual(testCase, get_param([modelName '/position_rate_command_6064'], 'BlockType'), 'Constant');
+verifyEqual(testCase, get_param([modelName '/position_reference_feedforward_enabled'], 'Value'), ...
+    char(target.Tunables.PositionReferenceFeedforwardEnabled));
+verifyNotEqual(testCase, get_param([modelName '/position_command_6064'], 'BlockType'), 'Constant');
+verifyNotEqual(testCase, get_param([modelName '/position_rate_command_6064'], 'BlockType'), 'Constant');
 verifyEqual(testCase, get_param([modelName '/position_loop_enabled_request'], 'BlockType'), 'Constant');
 verifyEqual(testCase, get_param([modelName '/position_loop_kp'], 'BlockType'), 'Constant');
 verifyEqual(testCase, get_param([modelName '/position_loop_ki'], 'BlockType'), 'Constant');
 verifyEqual(testCase, get_param([modelName '/position_loop_kd'], 'BlockType'), 'Constant');
 verifyEqual(testCase, get_param([modelName '/max_tracking_speed'], 'BlockType'), 'Constant');
 verifyEqual(testCase, get_param([modelName '/position_loop_speed_command_60ff_delay'], 'BlockType'), 'UnitDelay');
-verifyEqual(testCase, get_param([modelName '/position_command_6064'], 'Value'), char(target.Tunables.PositionCommand6064));
-verifyEqual(testCase, get_param([modelName '/position_rate_command_6064'], 'Value'), char(target.Tunables.PositionRateCommand6064));
-verifyEqual(testCase, get_param([modelName '/position_loop_enabled_request'], 'Value'), char(target.Tunables.PositionLoopEnabled));
+verifyEqual(testCase, get_param([modelName '/position_loop_enabled_request'], 'Value'), 'int32(1)');
 verifyEqual(testCase, get_param([modelName '/position_loop_kp'], 'Value'), char(target.Tunables.PositionLoopKp));
 verifyEqual(testCase, get_param([modelName '/position_loop_ki'], 'Value'), char(target.Tunables.PositionLoopKi));
 verifyEqual(testCase, get_param([modelName '/position_loop_kd'], 'Value'), char(target.Tunables.PositionLoopKd));
