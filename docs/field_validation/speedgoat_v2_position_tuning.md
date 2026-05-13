@@ -22,6 +22,8 @@
 - `statusword_6041`
 - `error_code_603f`
 - `ready_to_run`
+- `position_reference_6064`
+- `position_rate_reference_6064`
 - `position_command_6064`
 - `position_rate_command_6064`
 - `position_actual_6064`
@@ -34,28 +36,41 @@
 - `position_loop_enabled`
 - `diag_lookup_hint`
 
-## 要改哪些参数
+## 位置 reference 文件
 
-在 `Parameters` 页签里修改：
+构建前编辑：
 
-- `SGV2_POSITION_COMMAND_6064`
-- `SGV2_POSITION_RATE_COMMAND_6064`
-- `SGV2_POSITION_LOOP_ENABLED`
+```text
+data/reference/position_reference_6064.txt
+```
+
+文件每行一个位置点，不写时间列。模型会用内部 `target.SampleTime` 解释每一行的时间间隔。播放到最后一行后，`position_reference_6064` 和 `position_rate_reference_6064` 都回到 `0`。
+
+如果要关闭自动速度前馈，在 `Parameters` 页签里把：
+
+```text
+SGV2_POSITION_REFERENCE_FEEDFORWARD_ENABLED = 0
+```
+
+默认值是 `1`，表示使用相邻位置点差分出来的速度前馈。
+
+在 `Parameters` 页签里仍可调：
+
 - `SGV2_POSITION_LOOP_KP`
 - `SGV2_POSITION_LOOP_KI`
 - `SGV2_POSITION_LOOP_KD`
 - `SGV2_POSITION_LOOP_INTEGRATOR_LIMIT`
 
-`position_command_6064` 和 `position_rate_command_6064` 是对应的观测信号；真正能在 `Parameters` 里直接改的是 `SGV2_POSITION_COMMAND_6064` 和 `SGV2_POSITION_RATE_COMMAND_6064`。
-如果你只看到旧的速度参数、看不到这两个 `SGV2_POSITION_*`，说明 `slrtExplorer` 还在加载旧包；请先运行 `build_speedgoat_v2_minimal_app`，再重新载入最新生成的 `D:\Temporary_file\speedgoat_v2.0.0\matlab\speedgoat_v2_minimal.mldatx`。这个构建入口会自动补齐项目内 MATLAB path，不需要额外手动 `savepath`。
+`position_command_6064` 和 `position_rate_command_6064` 是进入 PT-5 的实际命令观测信号；它们现在来自 `Position Reference Source`，不是现场手动修改的位置参数。
+如果你看不到 `position_reference_6064`、`position_rate_reference_6064` 或 `SGV2_POSITION_REFERENCE_FEEDFORWARD_ENABLED`，说明 `slrtExplorer` 还在加载旧包；请先运行 `build_speedgoat_v2_minimal_app`，再重新载入最新生成的 `D:\Temporary_file\speedgoat_v2.0.0\matlab\speedgoat_v2_minimal.mldatx`。这个构建入口会自动补齐项目内 MATLAB path，不需要额外手动 `savepath`。
 
-`SGV2_POSITION_LOOP_ENABLED` 用整型 `0/1` 表示关闭/打开。`SGV2_POSITION_LOOP_KP/KI/KD` 在 `slrtExplorer` 里也用整型输入，模型内部按 `value * 0.001` 转成实际 PID 增益；例如 `SGV2_POSITION_LOOP_KP = 10` 表示实际 `Kp = 0.010`。
+`SGV2_POSITION_LOOP_ENABLED` 不再作为现场可调参数暴露。位置环请求在模型内部固定为开启，实际运动仍由 `ready_to_run`、PT-5 限幅和启动控制器门禁保护。`SGV2_POSITION_LOOP_KP/KI/KD` 在 `slrtExplorer` 里也用整型输入，模型内部按 `value * 0.001` 转成实际 PID 增益；例如 `SGV2_POSITION_LOOP_KP = 10` 表示实际 `Kp = 0.010`。
 
 ## 默认起点
 
 先保持这些默认值：
 
-- `PositionLoopEnabled = 0`
+- `SGV2_POSITION_REFERENCE_FEEDFORWARD_ENABLED = 1`
 - `PositionLoopKp = 0`
 - `PositionLoopKi = 0`
 - `PositionLoopKd = 0`
@@ -70,9 +85,9 @@
 ## 低速小位移流程
 
 1. 先让系统空载稳定，确认 `ready_to_run == 1`。
-2. 先把 `SGV2_POSITION_COMMAND_6064` 设成当前位置附近的小目标，把 `SGV2_POSITION_RATE_COMMAND_6064` 设成小速度。
-3. 先保持 `PositionLoopEnabled = 1`，但 `Kp/Ki/Kd = 0`，这样只看轨迹前馈。
-4. 观察 `position_loop_speed_command_60ff` 是否与 `position_ff_velocity_60ff` 一致，方向是否正确。
+2. 先把 `data/reference/position_reference_6064.txt` 写成当前位置附近的小位移 reference，每行一个位置点。
+3. 构建并加载最新应用包，先保持 `Kp/Ki/Kd = 0`，这样只看自动差分速度前馈。
+4. 在 Data Inspector 里观察 `position_reference_6064`、`position_actual_6064`、`position_loop_speed_command_60ff` 和 `position_ff_velocity_60ff`，确认方向是否正确。
 5. 观察 `speed_command_60ff` 是否只是比 `position_loop_speed_command_60ff` 晚一拍，并确认方向、单位和零速都对。
 6. 如果方向、单位和零速都对，再把 `PositionLoopKp` 设成很小的整数值，重新跑同样的小位移；例如先试 `1`，表示实际 `Kp = 0.001`。
 7. 如果仍然平稳，再按需要一点点加 `Ki` 或 `Kd`，每次只改一个量。

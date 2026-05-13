@@ -7,4 +7,4 @@
 - 只支持单轴 CSV。
 - 只消费 `1702h Outputs + 1B04h Inputs`。
 - 自动起机只推进到 `ready_to_run`。
-- 非零速度仍由人工给定。
+- 位置运行由 txt reference 驱动，`ready_to_run` 仍是实际运动门禁。

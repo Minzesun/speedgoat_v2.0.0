@@ -734,7 +734,7 @@ data/field_validation/README.md
 | `CommandDelaySamples` | 速度命令延迟样本数 | `0` | 首版静态前馈不启用延迟补偿 |
 | `MaxTrackingSpeed` | 位置环输出的速度上限 | `6000` | 现在就是线速度饱和值，按 `mm/s` 直通假设使用 |
 | `PositionUnitMillimetersPerCount6064` | `6064` 位置单位到毫米的换算系数 | `1` | 当前按 `position_actual_6064` 单位为 `mm` 处理 |
-| `PositionLoopEnabled` | 位置环使能，整型 0/1 | `0` | 外部轨迹输入接入后默认仍关闭，防止未调参就闭环 |
+| `PositionReferenceFeedforwardEnabled` | txt reference 自动差分速度前馈开关 | `1` | `0` 时速度前馈强制为零，只靠位置误差/PID |
 | `PositionLoopKp` | 位置环比例增益的千分之一整数刻度 | `0` | 模型内部按 `value * 0.001` 转成实际 `Kp` |
 | `PositionLoopKi` | 位置环积分增益的千分之一整数刻度 | `0` | 模型内部按 `value * 0.001` 转成实际 `Ki` |
 | `PositionLoopKd` | 位置环微分增益的千分之一整数刻度 | `0` | 模型内部按 `value * 0.001` 转成实际 `Kd` |
@@ -786,33 +786,37 @@ data/field_validation/YYYYMMDD_axis1_ident_<direction>_<speed>.csv
 
 ### 15.5 PT-5 位置环怎么用
 
-PT-5 的外部轨迹位置环现在已经接进模型了，但默认参数仍然保守，外部闭环也默认关闭。操作员应先看：
+PT-5 的外部轨迹位置环现在已经接进模型了。`Position Reference Source` 是 PT-5 的主 reference 入口：构建时会读取 `data/reference/position_reference_6064.txt`，按 `target.SampleTime` 把每一行解释成一个位置点，输出 `position_reference_6064` 和 `position_rate_reference_6064`。操作员应先看：
 
 - `task_plan.md` 里的 PT-3 到 PT-5
 - `findings.md` 里的辨识结论
 - `docs/reference/speedgoat_v2_signal_parameter_reference.md`
 - `docs/field_validation/speedgoat_v2_minimal.md`
 
-然后再决定是先只开逆模型前馈，还是同时开位置 PID。顶层模型里需要关注四个运行信号：`position_command_6064`、`position_rate_command_6064`、`position_actual_6064` 和 `ready_to_run`。为了让 `slrtExplorer` 的 `Parameters` 页签直接显示现场调参项，位置环使能、PID、积分限幅、前馈比例和最大跟踪速度由顶层 Constant 块引用 model workspace tunable，再接入 `PT-5 Position Loop`。
+然后再决定是先只看逆模型前馈，还是同时调位置 PID。顶层模型里需要关注六个运行信号：`position_reference_6064`、`position_rate_reference_6064`、`position_command_6064`、`position_rate_command_6064`、`position_actual_6064` 和 `ready_to_run`。`position_command_6064` / `position_rate_command_6064` 继续作为进入 PT-5 的实际命令观测信号存在，但它们现在来自 reference source，而不是现场手动改位置命令参数。
 
-在 `slrtExplorer` 的 `Parameters` 页签里，轨迹给定不是直接改 `position_command_6064` / `position_rate_command_6064`，而是改：
+在 `slrtExplorer` 的 `Parameters` 页签里，位置 reference 不是直接改 `position_command_6064` / `position_rate_command_6064`。构建前编辑：
 
-- `SGV2_POSITION_COMMAND_6064`
-- `SGV2_POSITION_RATE_COMMAND_6064`
-- `SGV2_POSITION_LOOP_ENABLED`
+```text
+data/reference/position_reference_6064.txt
+```
+
+现场仍可调：
+
+- `SGV2_POSITION_REFERENCE_FEEDFORWARD_ENABLED`
 - `SGV2_POSITION_LOOP_KP`
 - `SGV2_POSITION_LOOP_KI`
 - `SGV2_POSITION_LOOP_KD`
 - `SGV2_POSITION_LOOP_INTEGRATOR_LIMIT`
 - `SGV2_MAX_TRACKING_SPEED`
 
-前两个是位置给定和轨迹速度前馈，后面是位置环门禁、PID 和保护限幅。对应的 `position_command_6064` 和 `position_rate_command_6064` 在 `Signals` 页签里用来确认参数已经进入模型。
+`SGV2_POSITION_REFERENCE_FEEDFORWARD_ENABLED` 默认 `1`，表示使用 txt 相邻位置点自动差分得到的速度前馈；设为 `0` 时，`position_rate_reference_6064` 强制为零。对应的 `position_reference_6064`、`position_rate_reference_6064`、`position_command_6064` 和 `position_rate_command_6064` 在 `Signals` 页签和 Data Inspector 里用来确认 reference 已经进入模型。
 
-为了匹配现场 `slrtExplorer` 的参数显示行为，位置环门禁、PID、积分限幅、死区和最大跟踪速度都按 `int32` 暴露。`SGV2_POSITION_LOOP_ENABLED` 用 `0/1`；`SGV2_POSITION_LOOP_KP/KI/KD` 是千分之一增益整数，例如 `10` 表示实际增益 `0.010`。
+为了匹配现场 `slrtExplorer` 的参数显示行为，PID、积分限幅、死区和最大跟踪速度都按 `int32` 暴露。`SGV2_POSITION_LOOP_ENABLED` 不再暴露为可调参数，位置环请求内部固定开启，实际运动仍由 `ready_to_run` 和限速门禁保护。`SGV2_POSITION_LOOP_KP/KI/KD` 是千分之一增益整数，例如 `10` 表示实际增益 `0.010`。
 
 `position_loop_speed_command_60ff` 到启动控制器之间放了一个一拍 `Unit Delay`，这样可以打掉位置环与启动控制器之间的代数环，`speed_command_60ff` 看到的是实际送进控制器的那一路命令。
 
-如果是外部轨迹输入版本，位置环会同时看两个给定：
+位置环会同时看两个给定：
 
 - `position_command_6064`
 - `position_rate_command_6064`
@@ -847,7 +851,7 @@ speed_ff = position_rate_ref
 
 如果以后现场发现单位不是 `mm/s`、参数缺失，或者最大跟踪速度无效，这个函数仍可以回退到零速度，避免把错误单位带进现场。
 
-位置环门禁先由 `sgv2.control.computePositionLoopGate(ready_to_run, position_loop_enabled_request)` 处理，它只在 `ready_to_run == 1` 且位置环使能请求打开时才允许位置环输出非零速度。
+位置环门禁先由 `sgv2.control.computePositionLoopGate(ready_to_run, position_loop_enabled_request)` 处理。现在 `position_loop_enabled_request` 在模型内部固定为 `1`，因此它只在 `ready_to_run == 1` 时才允许位置环输出非零速度。
 
 位置环本体则由 `sgv2.control.computePositionLoopCommand(position_command_6064, position_rate_command_6064, position_actual_6064, params, state)` 负责，它把外部轨迹位置和轨迹速度合成一个最终速度命令，并输出：
 
@@ -863,6 +867,8 @@ speed_ff = position_rate_ref
 
 PT-8 不做大行程，只做低速、小位移、单参数递进的现场调参。操作员先读 `docs/field_validation/speedgoat_v2_position_tuning.md`，再在 `slrtExplorer` 里看：
 
+- `position_reference_6064`
+- `position_rate_reference_6064`
 - `position_command_6064`
 - `position_rate_command_6064`
 - `position_actual_6064`
