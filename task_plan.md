@@ -145,21 +145,21 @@ Position Tracking PT-5 is wired into Simulink with conservative defaults. Baseli
 - [x] 建立离线/可测试入口：`sgv2.control.computeInverseFeedforward(position_rate_ref, params)`
 - [x] 增加方向符号、死区补偿、速度限幅和无效模型回退
 - [x] 将线速度饱和值设为 `6000`
-- [x] 采用用户指定工作假设：`PositionVelocityGain = 1`、`PositionVelocityBias = 0`、`PositionUnitMillimetersPerCount6064 = 1`
+- [x] 采用用户指定工作假设：`PositionUnitMillimetersPerCount6064 = 1`
 - [x] 明确逆模型只产生速度前馈，不直接绕过现有 CiA402/CSV 起机门禁
-- [x] 将辨识参数放入配置层：`PositionVelocityGain`、`PositionVelocityBias`、`CommandDeadband`、`CommandDelaySamples`、`MaxTrackingSpeed`、`PositionUnitMillimetersPerCount6064`
+- [x] 将当前闭环参数放入配置层：`MaxTrackingSpeed`、`PositionUnitMillimetersPerCount6064`
 - [x] 将 PT-4 操作说明同步到 `SPEEDGOAT_V2_MINIMAL_LOGIC.md` 和 signal/reference 文档
 - **Status:** static inverse feedforward helper, mm/s unit assumption, and 6000 speed saturation contract complete; model wiring pending
 
 ### PT-5: Position Loop Controller Design
-- [x] 第一版位置给定采用外部轨迹输入：`position_command` / `position_rate_command`
-- [x] 建立纯 MATLAB 位置环 helper：`sgv2.control.computePositionLoopCommand(position_command_6064, position_rate_command_6064, position_actual_6064, params, state)`
-- [x] 在现有速度环外增加位置环：外部轨迹输入 `position_command` / `position_rate_command` - `position_actual_6064` -> PID + 前馈 -> speed correction
-- [x] 最终速度命令采用 `speed_command = speed_ff + speed_pid_correction`
+- [x] 当前位置给定采用单一位置目标：`position_command_6064`
+- [x] 建立纯 MATLAB 位置环 helper：`sgv2.control.computePositionLoopCommand(position_command_6064, position_actual_6064, params, state)`
+- [x] 在现有速度环外增加 PID-only 位置环：`position_command_6064 - position_actual_6064` -> PID -> speed command
+- [x] 最终速度命令采用 `speed_command = saturate(speed_pid_correction, ±SGV2_MAX_TRACKING_SPEED)`
 - [x] 增加积分限幅、输出速度限幅和 `ready_to_run` 零输出门禁
 - [x] 只在 `ready_to_run == 1`、无故障、模式正确时允许位置环输出非零速度
 - [x] 暴露调试信号：`position_command`、`position_error`、`position_pid_velocity`、`position_ff_velocity`、`position_loop_speed_command`、`position_loop_enabled`
-- [x] 将 `PT-5 Position Loop` 的运行信号和现场调参参数分开：4 个运行信号保持可读，调参参数用顶层 Constant 暴露给 `slrtExplorer` Parameters 页
+- [x] 将 `PT-5 Position Loop` 的运行信号和现场调参参数分开：位置目标、位置反馈和 ready 保持可读，调参参数用顶层 Constant 暴露给 `slrtExplorer` Parameters 页
 - **Status:** implemented in Simulink with conservative defaults; field tuning pending
 
 ### PT-6: Superpowers Spec & Implementation Plan
@@ -172,7 +172,7 @@ Position Tracking PT-5 is wired into Simulink with conservative defaults. Baseli
 - **Status:** complete
 
 ### PT-7: Simulink Implementation
-- [x] 扩展配置层，增加位置给定、逆模型参数和 PID 参数
+- [x] 扩展配置层，增加位置给定、最大跟踪速度和 PID 参数
 - [ ] 增加离线辨识脚本和测试数据 fixture
 - [x] 增加位置环控制子系统或 Stateflow/Simulink 组合实现
 - [x] 更新模型生成器连线，使位置环输出接入现有 `targetVelocity60FF`
@@ -181,9 +181,9 @@ Position Tracking PT-5 is wired into Simulink with conservative defaults. Baseli
 
 ### PT-8: Field Tuning & Acceptance Validation
 - [x] 写出 PT-8 低速小位移位置环调参 runbook
-- [x] 将 `position_command_6064` / `position_rate_command_6064` 的源改为 `slrtExplorer` 可调参数
+- [x] 将 `position_command_6064` 的源改为 `slrtExplorer` 可调参数
 - [ ] 用低速小位移验证方向、单位和零速保持
-- [ ] 先只启用逆模型前馈，观察位置跟踪斜率是否正确
+- [ ] 先确认零 PID 增益时输出速度保持为 `0`
 - [ ] 再启用小增益 P 控制，逐步加入 I/D 或滤波
 - [ ] 验证阶跃、斜坡、三角波或实际目标位移曲线的跟踪误差
 - [ ] 验收标准：`position_actual_6064` 与给定位置在允许误差内收敛，故障/未 ready 时输出速度归零
@@ -247,7 +247,7 @@ Position Tracking PT-5 is wired into Simulink with conservative defaults. Baseli
 | 大范围全文搜索 `TwinCAT / demo_stable` 时 PowerShell 超时 | 1 | 改为先搜目录名，再聚焦 `Speedgoat\\matlab` 做结构化排查 |
 | 首次 PDF 关键字抽取因 PowerShell 默认编码报 `UnicodeEncodeError` | 1 | 改为在 Python 中切到 UTF-8 输出，再重新抽取关键页内容 |
 | `rg -n "... " matlab docs *.md` 在 PowerShell 下对 `*.md` 报路径语法错误 | 1 | 已从有效输出中提取本次需要的 MATLAB/docs 发现；后续搜索使用明确目录或 `rg --glob "*.md"` |
-| `slrtExplorer` 仍看不到 position 参数 | 1 | 根因是加载的 `.mldatx` 仍是旧包；已重新 `slbuild` 并确认新 `matlab\speedgoat_v2_minimal.mldatx` 的 `paramInfo.json` 含 `SGV2_POSITION_COMMAND_6064` / `SGV2_POSITION_RATE_COMMAND_6064` |
+| `slrtExplorer` 仍看不到 position 参数 | 1 | 根因是加载的 `.mldatx` 仍是旧包；已重新 `slbuild` 并确认新 `matlab\speedgoat_v2_minimal.mldatx` 的 `paramInfo.json` 含 `SGV2_POSITION_COMMAND_6064`、PID 参数和 `SGV2_MAX_TRACKING_SPEED` |
 | `slbuild` 首次恢复时报 PT-5 / StartupChart 代数环 | 1 | 在 `position_loop_speed_command_60ff` 到启动控制器输入之间加入一拍 `Unit Delay`，打断直接反馈环 |
 | 聚合回归中 `slbuild` 走增量链接时报 `rtIsNaN` / `rt_InitInfAndNaN` 未定义 | 1 | 测试中先清理旧 `speedgoat_v2_minimal_slrealtime_rtw` 和 `.slxc`，强制走干净构建路径 |
 | `build_speedgoat_v2_minimal` 在 `buildPositionLoopChart` 第 80 行报 chart codegen 失败 | 1 | 根因是 PT-5 子系统尚未完整接线时提前执行 `SimulationCommand update`；已把 update 挪到 `buildMinimalModel` 完成所有连线之后 |

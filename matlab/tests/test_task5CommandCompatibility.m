@@ -28,8 +28,7 @@ dirCleanup = onCleanup(@() cd(originalDir));
 evalin('base', ['clear(' ...
     '''SGV2_SPEED_COMMAND_60FF'', ' ...
     '''SGV2_SPEED_LIMIT_607F'', ' ...
-    '''SGV2_POSITION_COMMAND_6064'', ' ...
-    '''SGV2_POSITION_RATE_COMMAND_6064'')']);
+    '''SGV2_POSITION_COMMAND_6064'')']);
 
 appPath = build_speedgoat_v2_minimal_app();
 verifyTrue(testCase, isfile(appPath));
@@ -85,7 +84,7 @@ unzip(appPath, tempRoot);
 paramInfoPath = fullfile(tempRoot, 'paramSet', 'paramInfo.json');
 paramInfo = fileread(paramInfoPath);
 verifyTrue(testCase, contains(paramInfo, 'SGV2_POSITION_COMMAND_6064'));
-verifyTrue(testCase, contains(paramInfo, 'SGV2_POSITION_RATE_COMMAND_6064'));
+verifyFalse(testCase, contains(paramInfo, 'SGV2_POSITION_RATE_COMMAND_6064'));
 verifyTrue(testCase, contains(paramInfo, 'SGV2_POSITION_LOOP_ENABLED'));
 verifyTrue(testCase, contains(paramInfo, 'SGV2_POSITION_LOOP_KP'));
 verifyTrue(testCase, contains(paramInfo, 'SGV2_POSITION_LOOP_KI'));

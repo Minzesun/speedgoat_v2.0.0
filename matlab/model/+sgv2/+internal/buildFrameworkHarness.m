@@ -62,4 +62,16 @@ for k = 1:size(loggedOutputs, 1)
     set_param(lineHandle, 'Name', loggedOutputs{k, 1});
     Simulink.sdi.markSignalForStreaming(lineHandle, 'on');
 end
+
+terminatedOutputs = { ...
+    'mode_command_6060', 3; ...
+    'speed_limit_out_607f', 4};
+for k = 1:size(terminatedOutputs, 1)
+    terminatorBlock = [modelName '/' terminatedOutputs{k, 1} '_terminator'];
+    add_block('simulink/Sinks/Terminator', terminatorBlock, ...
+        'Position', [770 465 + (k - 1) * 45 800 495 + (k - 1) * 45]);
+    terminatorHandles = get_param(terminatorBlock, 'PortHandles');
+    add_line(modelName, controllerHandles.Outport(terminatedOutputs{k, 2}), ...
+        terminatorHandles.Inport, 'autorouting', 'on');
+end
 end

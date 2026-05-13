@@ -33,6 +33,5 @@ build_speedgoat_v2_minimal_app;
 如果启用 PT-5 的外部轨迹位置环，操作方式会改成喂轨迹而不是直接改 `speed_command_60ff`：
 
 - `position_command_6064`
-- `position_rate_command_6064`
 
-位置环会把轨迹位置、轨迹速度前馈和 `position_actual_6064` 合成最终速度命令，再回写到现有 `60FFh` 通道。
+位置环会用 `position_command_6064 - position_actual_6064` 生成误差，经 PID 输出速度命令，再用 `SGV2_MAX_TRACKING_SPEED` 做正负限幅，最后回写到现有 `60FFh` 通道。当前版本没有手动速度前馈输入；`position_ff_velocity_60ff` 只保留为兼容观测信号，固定为 `0`。

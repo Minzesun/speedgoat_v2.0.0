@@ -68,7 +68,6 @@ paramInfo = fileread(paramInfoPath);
 
 requiredTokens = { ...
     'SGV2_POSITION_COMMAND_6064'
-    'SGV2_POSITION_RATE_COMMAND_6064'
     'SGV2_POSITION_LOOP_ENABLED'
     'SGV2_POSITION_LOOP_KP'
     'SGV2_POSITION_LOOP_KI'

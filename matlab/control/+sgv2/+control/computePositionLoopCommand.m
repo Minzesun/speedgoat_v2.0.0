@@ -1,6 +1,18 @@
-function result = computePositionLoopCommand(positionCommand6064, positionRateRef6064, positionActual6064, params, state)
+function result = computePositionLoopCommand(positionCommand6064, varargin)
+if nargin == 4
+    positionActual6064 = varargin{1};
+    params = varargin{2};
+    state = varargin{3};
+elseif nargin == 5
+    positionActual6064 = varargin{2};
+    params = varargin{3};
+    state = varargin{4};
+else
+    error('sgv2:InvalidPositionLoopCommandArguments', ...
+        'Expected position command, position actual, params, and state.');
+end
+
 positionCommand = double(positionCommand6064(:));
-positionRateRef = double(positionRateRef6064(:));
 positionActual = double(positionActual6064(:));
 
 if ~localHasValidParams(params)
@@ -10,12 +22,6 @@ end
 
 if ~isfield(params, 'PositionLoopEnabled') || ~logical(params.PositionLoopEnabled)
     result = localFallback(positionCommand, "position_loop_disabled", true);
-    return;
-end
-
-feedforward = sgv2.control.computeInverseFeedforward(positionRateRef, params);
-if ~feedforward.ModelValid
-    result = localFallback(positionCommand, string(feedforward.FallbackReason), false);
     return;
 end
 
@@ -44,9 +50,9 @@ integral6064Next = integral6064 + ki .* error6064 .* sampleTime;
 integral6064Next = min(max(integral6064Next, -integratorLimit), integratorLimit);
 derivative6064 = (error6064 - previousError6064) ./ sampleTime;
 rawPidVelocity60FF = kp .* error6064 + integral6064Next + kd .* derivative6064;
-rawSpeedCommand60FF = double(feedforward.SpeedFeedforward60FF) + rawPidVelocity60FF;
-limitedSpeedCommand60FF = min(max(rawSpeedCommand60FF, -maxSpeed), maxSpeed);
-limitedMask = limitedSpeedCommand60FF ~= rawSpeedCommand60FF;
+limitedSpeedCommand60FF = min(max(rawPidVelocity60FF, -maxSpeed), maxSpeed);
+limitedMask = limitedSpeedCommand60FF ~= rawPidVelocity60FF;
+zeroSpeed = int32(zeros(size(positionCommand)));
 
 result = struct( ...
     'ModelValid', true, ...
@@ -54,7 +60,7 @@ result = struct( ...
     'PositionError6064', int32(round(error6064)), ...
     'RawPositionPidVelocity60FF', rawPidVelocity60FF, ...
     'PositionPidVelocity60FF', int32(round(rawPidVelocity60FF)), ...
-    'PositionFeedforwardVelocity60FF', feedforward.SpeedFeedforward60FF, ...
+    'PositionFeedforwardVelocity60FF', zeroSpeed, ...
     'SpeedCommand60FF', int32(round(limitedSpeedCommand60FF)), ...
     'Integrator6064Next', integral6064Next, ...
     'PreviousError6064Next', error6064, ...
@@ -70,9 +76,6 @@ isValid = isstruct(params) && ...
     isfield(params, 'PositionLoopKd') && ...
     isfield(params, 'PositionLoopSampleTime') && ...
     isfield(params, 'PositionLoopIntegratorLimit') && ...
-    isfield(params, 'PositionVelocityGain') && ...
-    isfield(params, 'PositionVelocityBias') && ...
-    isfield(params, 'CommandDeadband') && ...
     isfield(params, 'MaxTrackingSpeed');
 end
 

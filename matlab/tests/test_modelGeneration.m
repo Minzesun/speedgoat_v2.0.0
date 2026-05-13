@@ -12,6 +12,9 @@ modelName = char(target.ModelName);
 
 verifyEqual(testCase, get_param(modelName, 'SystemTargetFile'), 'slrealtime.tlc');
 verifyEqual(testCase, get_param(modelName, 'FixedStep'), num2str(target.SampleTime));
+initFcn = get_param(modelName, 'InitFcn');
+verifyNotEmpty(testCase, initFcn);
+verifyTrue(testCase, contains(initFcn, 'bootstrap_speedgoat_v2_path.m'));
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/EtherCAT Init']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/EtherCAT Get State']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/expected_network_state']) > 0);
@@ -20,7 +23,7 @@ verifyTrue(testCase, getSimulinkBlockHandle([modelName '/PT-5 Position Loop']) >
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/speed_command_60ff']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/speed_limit_607f']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_command_6064']) > 0);
-verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_rate_command_6064']) > 0);
+verifyFalse(testCase, getSimulinkBlockHandle([modelName '/position_rate_command_6064']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_loop_enabled_request']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_loop_kp']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_loop_ki']) > 0);
@@ -28,7 +31,6 @@ verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_loop_kd']) > 0
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/max_tracking_speed']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_loop_speed_command_60ff_delay']) > 0);
 verifyEqual(testCase, get_param([modelName '/position_command_6064'], 'BlockType'), 'Constant');
-verifyEqual(testCase, get_param([modelName '/position_rate_command_6064'], 'BlockType'), 'Constant');
 verifyEqual(testCase, get_param([modelName '/position_loop_enabled_request'], 'BlockType'), 'Constant');
 verifyEqual(testCase, get_param([modelName '/position_loop_kp'], 'BlockType'), 'Constant');
 verifyEqual(testCase, get_param([modelName '/position_loop_ki'], 'BlockType'), 'Constant');
@@ -36,7 +38,6 @@ verifyEqual(testCase, get_param([modelName '/position_loop_kd'], 'BlockType'), '
 verifyEqual(testCase, get_param([modelName '/max_tracking_speed'], 'BlockType'), 'Constant');
 verifyEqual(testCase, get_param([modelName '/position_loop_speed_command_60ff_delay'], 'BlockType'), 'UnitDelay');
 verifyEqual(testCase, get_param([modelName '/position_command_6064'], 'Value'), char(target.Tunables.PositionCommand6064));
-verifyEqual(testCase, get_param([modelName '/position_rate_command_6064'], 'Value'), char(target.Tunables.PositionRateCommand6064));
 verifyEqual(testCase, get_param([modelName '/position_loop_enabled_request'], 'Value'), char(target.Tunables.PositionLoopEnabled));
 verifyEqual(testCase, get_param([modelName '/position_loop_kp'], 'Value'), char(target.Tunables.PositionLoopKp));
 verifyEqual(testCase, get_param([modelName '/position_loop_ki'], 'Value'), char(target.Tunables.PositionLoopKi));
@@ -53,9 +54,23 @@ verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_actual_6064'])
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/diag_lookup_hint']) > 0);
 
 positionLoopHandles = get_param([modelName '/PT-5 Position Loop'], 'PortHandles');
-verifyEqual(testCase, numel(positionLoopHandles.Inport), 14);
+verifyEqual(testCase, numel(positionLoopHandles.Inport), 10);
+verifyFalse(testCase, getSimulinkBlockHandle([modelName '/PT-5 Position Loop/position_rate_command_6064']) > 0);
+verifyFalse(testCase, getSimulinkBlockHandle([modelName '/PT-5 Position Loop/feedforward_velocity_divide']) > 0);
+verifyFalse(testCase, getSimulinkBlockHandle([modelName '/PT-5 Position Loop/position_rate_to_double']) > 0);
+verifyFalse(testCase, getSimulinkBlockHandle([modelName '/PT-5 Position Loop/final_raw_speed_sum']) > 0);
 verifyFalse(testCase, getSimulinkBlockHandle([modelName '/PT-5 Position Loop/position_loop_enabled_request_constant']) > 0);
 verifyFalse(testCase, getSimulinkBlockHandle([modelName '/PT-5 Position Loop/position_loop_kp_constant']) > 0);
+verifyFalse(testCase, getSimulinkBlockHandle([modelName '/SV660N Sequence Controller/StartupChart']) > 0);
+verifyFalse(testCase, getSimulinkBlockHandle([modelName '/PT-5 Position Loop/PositionLoopChart']) > 0);
+verifyTrue(testCase, getSimulinkBlockHandle([modelName '/SV660N Sequence Controller/startup_decision']) > 0);
+verifyTrue(testCase, getSimulinkBlockHandle([modelName '/PT-5 Position Loop/pid_state_update']) > 0);
+
+chartBlocks = find_system(modelName, ...
+    'LookUnderMasks', 'all', ...
+    'FollowLinks', 'on', ...
+    'ReferenceBlock', 'sflib/Chart');
+verifyEmpty(testCase, chartBlocks);
 clear closeCleanup;
 
 tempRoot = tempname;

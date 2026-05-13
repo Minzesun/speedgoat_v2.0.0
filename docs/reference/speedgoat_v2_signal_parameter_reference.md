@@ -22,12 +22,7 @@
 | `IdentificationStep6064` | 辨识阶段小步长，默认 `100` | AxisConfig / Tunables | 后续做阶跃/阶梯试验时使用 | 项目逻辑文档与 AxisConfig 默认值 |
 | `IdentificationStopBand6064` | 辨识阶段停止带，默认 `20` | AxisConfig / Tunables | 后续判定停止或接近目标时使用 | 项目逻辑文档与 AxisConfig 默认值 |
 | `SGV2_POSITION_COMMAND_6064` | 外部轨迹位置给定参数，默认 `0` | AxisConfig / Tunables | 在 `Parameters` 里改位置给定 | PT-8 调参 runbook |
-| `SGV2_POSITION_RATE_COMMAND_6064` | 外部轨迹速度前馈参数，默认 `0` | AxisConfig / Tunables | 在 `Parameters` 里改轨迹速度 | PT-8 调参 runbook |
-| `PositionVelocityGain` | 逆模型斜率，默认 `1` | AxisConfig / Tunables | 当前按 `60FF` 命令单位就是 `mm/s` 处理；为 `0` 时前馈输出安全回零 | 项目逻辑文档与单位假设 |
-| `PositionVelocityBias` | 逆模型偏置，默认 `0` | AxisConfig / Tunables | 当前不加常数偏置；后续如有现场偏差再更新 | 项目逻辑文档与单位假设 |
-| `CommandDeadband` | 逆模型速度命令死区，默认 `0` | AxisConfig / Tunables | 规划中的逆模型参数，小命令可被压到 `0` | 项目逻辑文档与调试记录 |
-| `CommandDelaySamples` | 速度命令延迟样本数，默认 `0` | AxisConfig / Tunables | 规划中的延迟补偿参数，首版静态前馈暂不使用 | PT-3 现场延迟判断 |
-| `MaxTrackingSpeed` | 位置跟踪输出速度上限，默认 `6000` | AxisConfig / Tunables | 现在作为线速度饱和值；默认按 `mm/s` 直通假设使用 | 项目逻辑文档与 AxisConfig 默认值 |
+| `MaxTrackingSpeed` | 位置跟踪输出速度上限，默认 `6000` | AxisConfig / Tunables | 现在作为 PID 输出速度饱和值；不是自动规划速度 | 项目逻辑文档与 AxisConfig 默认值 |
 | `PositionUnitMillimetersPerCount6064` | `6064` 位置单位到毫米的换算系数，默认 `1` | AxisConfig / Tunables | 现在按 `mm` 假设；用于位置单位注记和后续工程单位转换 | 项目逻辑文档与单位假设 |
 | `PositionLoopEnabled` | 位置环使能，整型 `0/1`，默认 `0` | AxisConfig / Tunables | 外部轨迹输入接入后默认仍关闭，防止未调参就闭环 | 项目逻辑文档与安全默认值 |
 | `PositionLoopKp` | 位置环比例增益的千分之一整数刻度，默认 `0` | AxisConfig / Tunables | `10` 表示实际 `Kp = 0.010` | 项目逻辑文档与位置环约束 |
@@ -36,13 +31,12 @@
 | `PositionLoopSampleTime` | 位置环离散采样时间，默认 `0.002` | AxisConfig / Tunables | 与当前模型固定步长一致 | 项目逻辑文档与固定步长约束 |
 | `PositionLoopIntegratorLimit` | 位置环积分限幅，默认 `0` | AxisConfig / Tunables | 首版积分保持关闭状态 | 项目逻辑文档与位置环约束 |
 | `position_command_6064` | 外部轨迹位置给定观测信号 | PT-5 外部轨迹输入 | 在 `Signals` 里看给定位置是否等于 `SGV2_POSITION_COMMAND_6064` | PT-8 调参 runbook |
-| `position_rate_command_6064` | 外部轨迹速度前馈观测信号 | PT-5 外部轨迹输入 | 在 `Signals` 里看轨迹斜率是否等于 `SGV2_POSITION_RATE_COMMAND_6064` | PT-8 调参 runbook |
 | `position_error_6064` | 位置误差 | PT-5 位置环内部 | 看位置环误差是否收敛 | 位置环控制逻辑 |
-| `position_ff_velocity_60ff` | 轨迹前馈速度 | PT-5 位置环内部 | 看前馈是否和轨迹斜率一致 | `computePositionLoopCommand` / `computeInverseFeedforward` |
+| `position_ff_velocity_60ff` | 保留观测量，当前 PID-only 架构固定为 `0` | PT-5 位置环内部 | 确认现场包已经切到无前馈版本 | 位置环控制逻辑 |
 | `position_pid_velocity_60ff` | 位置 PID 速度修正 | PT-5 位置环内部 | 看 PID 是否在修正误差 | 位置环控制逻辑 |
 | `position_loop_speed_command_60ff` | 位置环直接输出的速度命令，随后经过一拍延迟进入启动控制器 | PT-5 位置环内部 | 看它与 `speed_command_60ff` 的方向和幅值是否一致 | 位置环控制逻辑 |
 | `position_loop_enabled` | 位置环实际使能状态 | PT-5 位置环内部 | 看闭环是否真的打开 | 位置环控制逻辑 |
 | `computePositionLoopGate` | 位置环门禁合同函数 | MATLAB helper | 用它确认 ready_to_run 和位置环使能请求是否同时允许闭环 | `matlab/control/+sgv2/+control/computePositionLoopGate.m` |
-| `computePositionLoopCommand` | 位置环合同函数 | MATLAB helper | 用它复现外部轨迹输入到速度输出的计算 | `matlab/control/+sgv2/+control/computePositionLoopCommand.m` |
+| `computePositionLoopCommand` | 位置环合同函数 | MATLAB helper | 用它复现位置目标、实际位置和 PID 参数到速度输出的计算 | `matlab/control/+sgv2/+control/computePositionLoopCommand.m` |
 
-位置跟踪、逆模型和位置 PID 已经进入 PT-5 模型，但默认值仍然保守，外层闭环默认不启用。操作流程同步记录在项目根目录的 `SPEEDGOAT_V2_MINIMAL_LOGIC.md` 第 15 节；后续如果加新的 tunable 或观测信号，这里要同步补表。
+位置跟踪 PID 已经进入 PT-5 模型，但默认值仍然保守，外层闭环默认不启用。当前 PT-5 不再接受手动速度前馈参数，参考文件只需要 `time, position_command_6064`。操作流程同步记录在项目根目录的 `SPEEDGOAT_V2_MINIMAL_LOGIC.md` 第 15 节；后续如果加新的 tunable 或观测信号，这里要同步补表。

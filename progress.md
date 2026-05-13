@@ -561,3 +561,4 @@
 | What's the goal? | 让 `Rx Position actual 6064` 跟踪给定位置，同时保持顶层模型清爽、操作员可复现 |
 | What have I learned? | PT-5 的参数最好收在子系统内部常量里，Stateflow 临时量必须显式声明；门禁逻辑单独成 helper 后更容易复查 |
 | What have I done? | 已把 PT-5 写进模型、文档、规划文件和测试合同，并补了可单测的位置环门禁 |
+| 2026-05-13 PID-only position loop | `matlab -batch "cd('D:\\Temporary_file\\speedgoat_v2.0.0\\matlab'); addpath(genpath(pwd)); results = runtests('tests'); disp(table(results)); if any([results.Failed]); error('test failed'); end"` | 用户确认去掉手动速度前馈，位置环只由 `position_command_6064 - position_actual_6064` 经 PID 生成速度命令 | `position_rate_command_6064` / `SGV2_POSITION_RATE_COMMAND_6064` 已从模型接口和包参数移除，`position_ff_velocity_60ff` 固定为 0，PT-5 为 10 输入，完整测试通过 | pass |
