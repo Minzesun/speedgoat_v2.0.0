@@ -537,12 +537,12 @@
 - 这意味着后续工作不再把 PT-3 当作完整系统辨识，而是把它收缩为单位/比例假设的工程前提。
 
 ## 2026-05-10 PT-4 Unit Assumption Lock
-- 用户进一步要求直接按 `PositionVelocityGain = 1` 处理逆模型前馈。
+- 用户进一步要求先按当前参考信号消除软件量化锯齿，默认改为 `PositionVelocityGain = 1000`、`PositionUnitMillimetersPerCount6064 = 0.001`。
 - 同时采用 `PositionVelocityBias = 0`。
 - `PositionUnitMillimetersPerCount6064 = 1` 表示 `6064` 直接按 `mm` 理解，用于单位注记和后续工程换算。
 - `MaxTrackingSpeed = 6000` 作为默认线速度饱和值。
 - 这使得 `computeInverseFeedforward` 在默认配置下近似退化为：
-  - `speed_ff = position_rate_ref`
+  - `speed_ff = position_rate_ref / 1000`
 - 对于后续现场调试，只要 `mm/s` 假设成立，逆模型前馈就不必再重新辨识；需要做的是位置 PID 和上限饱和的现场微调。
 
 ## 2026-05-10 PT-5 External Trajectory Input Decision
@@ -568,9 +568,9 @@
   - `position_loop_speed_command_60ff`
 
 ## 2026-05-10 Default Value Meaning
-- `PositionVelocityGain = 1` 的意义是：默认按 1:1 直通处理期望位置变化率和速度命令，不引入额外比例缩放。
+- `PositionVelocityGain = 1000` 的意义是：默认把 6064 counts/s 的位置变化率换算成约 `mm/s` 的速度命令。
 - `PositionVelocityBias = 0` 的意义是：默认不加常数偏置，避免在没有现场偏差证据前把速度命令整体抬高或压低。
-- `PositionUnitMillimetersPerCount6064 = 1` 的意义是：默认把 `6064` 按 `mm` 理解，即 1 count 视作 1 mm，便于后续把位置、速度和物理单位统一起来。
+- `PositionUnitMillimetersPerCount6064 = 0.001` 的意义是：默认把 txt 参考里的 mm 小数换算成高分辨率 6064 counts，即 1 count 视作 0.001 mm。
 - 这三个默认值合在一起，就是一套“先按 `mm` / `mm/s` 直通，再按现场需要微调”的最小单位合同。
 
 ## 2026-05-10 PT-5 Simulink Wiring Contract
@@ -613,7 +613,7 @@
   - `PositionLoopKd = 0`
   - `PositionLoopIntegratorLimit = 0`
   - `PositionLoopSampleTime = 0.002`
-  - `PositionVelocityGain = 1`
+  - `PositionVelocityGain = 1000`
   - `PositionVelocityBias = 0`
   - `CommandDeadband = 0`
   - `MaxTrackingSpeed = 6000`

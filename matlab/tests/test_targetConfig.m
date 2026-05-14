@@ -46,6 +46,9 @@ verifyEqual(testCase, fieldnames(target.AxisConfig), { ...
     'DefaultIdentificationStopBand6064'
     'DefaultPositionReferenceFile'
     'DefaultPositionReferenceFeedforwardEnabled'
+    'DefaultReferencePlayRequest'
+    'DefaultHomeToZeroRequest'
+    'DefaultHomeToZeroSpeed'
     'DefaultPositionCommand6064'
     'DefaultPositionRateCommand6064'
     'DefaultPositionVelocityGain'
@@ -80,6 +83,9 @@ verifyEqual(testCase, fieldnames(target.Tunables), { ...
     'IdentificationStep6064'
     'IdentificationStopBand6064'
     'PositionReferenceFeedforwardEnabled'
+    'ReferencePlayRequest'
+    'HomeToZeroRequest'
+    'HomeToZeroSpeed'
     'PositionCommand6064'
     'PositionRateCommand6064'
     'PositionVelocityGain'
@@ -139,14 +145,17 @@ verifyEqual(testCase, target.AxisConfig.DefaultIdentificationStopBand6064, int32
 verifyEqual(testCase, target.AxisConfig.DefaultPositionReferenceFile, ...
     "data/reference/position_reference_6064.txt");
 verifyEqual(testCase, target.AxisConfig.DefaultPositionReferenceFeedforwardEnabled, int32(1));
+verifyEqual(testCase, target.AxisConfig.DefaultReferencePlayRequest, int32(0));
+verifyEqual(testCase, target.AxisConfig.DefaultHomeToZeroRequest, int32(0));
+verifyEqual(testCase, target.AxisConfig.DefaultHomeToZeroSpeed, int32(10));
 verifyEqual(testCase, target.AxisConfig.DefaultPositionCommand6064, int32(0));
 verifyEqual(testCase, target.AxisConfig.DefaultPositionRateCommand6064, int32(0));
-verifyEqual(testCase, target.AxisConfig.DefaultPositionVelocityGain, int32(1));
+verifyEqual(testCase, target.AxisConfig.DefaultPositionVelocityGain, int32(1000));
 verifyEqual(testCase, target.AxisConfig.DefaultPositionVelocityBias, int32(0));
 verifyEqual(testCase, target.AxisConfig.DefaultCommandDeadband, int32(0));
 verifyEqual(testCase, target.AxisConfig.DefaultCommandDelaySamples, uint32(0));
 verifyEqual(testCase, target.AxisConfig.DefaultMaxTrackingSpeed, int32(6000));
-verifyEqual(testCase, target.AxisConfig.DefaultPositionUnitMillimetersPerCount6064, double(1));
+verifyEqual(testCase, target.AxisConfig.DefaultPositionUnitMillimetersPerCount6064, double(0.001));
 verifyEqual(testCase, target.AxisConfig.DefaultPositionLoopKp, int32(0));
 verifyEqual(testCase, target.AxisConfig.DefaultPositionLoopKi, int32(0));
 verifyEqual(testCase, target.AxisConfig.DefaultPositionLoopKd, int32(0));
@@ -157,6 +166,9 @@ verifyEqual(testCase, target.Tunables.IdentificationMaxTravel6064, "SGV2_IDENTIF
 verifyEqual(testCase, target.Tunables.IdentificationStep6064, "SGV2_IDENTIFICATION_STEP_6064");
 verifyEqual(testCase, target.Tunables.IdentificationStopBand6064, "SGV2_IDENTIFICATION_STOP_BAND_6064");
 verifyEqual(testCase, target.Tunables.PositionReferenceFeedforwardEnabled, "SGV2_POSITION_REFERENCE_FEEDFORWARD_ENABLED");
+verifyEqual(testCase, target.Tunables.ReferencePlayRequest, "SGV2_REFERENCE_PLAY_REQUEST");
+verifyEqual(testCase, target.Tunables.HomeToZeroRequest, "SGV2_HOME_TO_ZERO_REQUEST");
+verifyEqual(testCase, target.Tunables.HomeToZeroSpeed, "SGV2_HOME_TO_ZERO_SPEED");
 verifyEqual(testCase, target.Tunables.PositionCommand6064, "SGV2_POSITION_COMMAND_6064");
 verifyEqual(testCase, target.Tunables.PositionRateCommand6064, "SGV2_POSITION_RATE_COMMAND_6064");
 verifyEqual(testCase, target.Tunables.PositionVelocityGain, "SGV2_POSITION_VELOCITY_GAIN");

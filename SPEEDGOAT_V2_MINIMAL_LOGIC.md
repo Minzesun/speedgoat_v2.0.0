@@ -735,6 +735,9 @@ data/field_validation/README.md
 | `MaxTrackingSpeed` | 位置环输出的速度上限 | `6000` | 现在就是线速度饱和值，按 `mm/s` 直通假设使用 |
 | `PositionUnitMillimetersPerCount6064` | `6064` 位置单位到毫米的换算系数 | `1` | 当前按 `position_actual_6064` 单位为 `mm` 处理 |
 | `PositionReferenceFeedforwardEnabled` | txt reference 自动差分速度前馈开关 | `1` | `0` 时速度前馈强制为零，只靠位置误差/PID |
+| `ReferencePlayRequest` | txt reference 播放请求 | `0` | 点击 Start 后保持 `0` 时不消耗轨迹；改成 `1` 才播放 |
+| `HomeToZeroRequest` | 斜坡回绝对零位请求 | `0` | 改成 `1` 后优先于 txt reference，命令回 `position_reference_6064 = 0` |
+| `HomeToZeroSpeed` | 回零斜坡速度 | `10` | 默认按 `10 mm/s` 保守回零 |
 | `PositionLoopKp` | 位置环比例增益的千分之一整数刻度 | `0` | 模型内部按 `value * 0.001` 转成实际 `Kp` |
 | `PositionLoopKi` | 位置环积分增益的千分之一整数刻度 | `0` | 模型内部按 `value * 0.001` 转成实际 `Ki` |
 | `PositionLoopKd` | 位置环微分增益的千分之一整数刻度 | `0` | 模型内部按 `value * 0.001` 转成实际 `Kd` |
@@ -786,7 +789,7 @@ data/field_validation/YYYYMMDD_axis1_ident_<direction>_<speed>.csv
 
 ### 15.5 PT-5 位置环怎么用
 
-PT-5 的外部轨迹位置环现在已经接进模型了。`Position Reference Source` 是 PT-5 的主 reference 入口：构建时会读取 `data/reference/position_reference_6064.txt`，按 `target.SampleTime` 把每一行解释成一个位置点，输出 `position_reference_6064` 和 `position_rate_reference_6064`。操作员应先看：
+PT-5 的外部轨迹位置环现在已经接进模型了。`Position Reference Source` 是 PT-5 的主 reference 入口：构建时会读取 `data/reference/position_reference_6064.txt`，按 `target.SampleTime` 把每一行解释成一个位置点，输出 `position_reference_6064` 和 `position_rate_reference_6064`。点击 Start 只让系统上使能并等待 `ready_to_run = 1`，不会自动消耗 txt reference；操作员调好参数后，才通过 `SGV2_REFERENCE_PLAY_REQUEST` 或 `SGV2_HOME_TO_ZERO_REQUEST` 发起运动。操作员应先看：
 
 - `task_plan.md` 里的 PT-3 到 PT-5
 - `findings.md` 里的辨识结论
@@ -804,13 +807,16 @@ data/reference/position_reference_6064.txt
 现场仍可调：
 
 - `SGV2_POSITION_REFERENCE_FEEDFORWARD_ENABLED`
+- `SGV2_REFERENCE_PLAY_REQUEST`
+- `SGV2_HOME_TO_ZERO_REQUEST`
+- `SGV2_HOME_TO_ZERO_SPEED`
 - `SGV2_POSITION_LOOP_KP`
 - `SGV2_POSITION_LOOP_KI`
 - `SGV2_POSITION_LOOP_KD`
 - `SGV2_POSITION_LOOP_INTEGRATOR_LIMIT`
 - `SGV2_MAX_TRACKING_SPEED`
 
-`SGV2_POSITION_REFERENCE_FEEDFORWARD_ENABLED` 默认 `1`，表示使用 txt 相邻位置点自动差分得到的速度前馈；设为 `0` 时，`position_rate_reference_6064` 强制为零。对应的 `position_reference_6064`、`position_rate_reference_6064`、`position_command_6064` 和 `position_rate_command_6064` 在 `Signals` 页签和 Data Inspector 里用来确认 reference 已经进入模型。
+`SGV2_POSITION_REFERENCE_FEEDFORWARD_ENABLED` 默认 `1`，表示使用 txt 相邻位置点自动差分得到的速度前馈；设为 `0` 时，`position_rate_reference_6064` 强制为零。`SGV2_REFERENCE_PLAY_REQUEST` 默认 `0`，只有从 `0` 改为 `1` 才锁存当前位置并从 txt 第 1 行开始播放。`SGV2_HOME_TO_ZERO_REQUEST` 默认 `0`，改成 `1` 后以 `SGV2_HOME_TO_ZERO_SPEED = 10` 的默认速度斜坡回绝对零位；如果 play 和 home 同时为 `1`，回零优先。对应的 `position_reference_6064`、`position_rate_reference_6064`、`position_command_6064` 和 `position_rate_command_6064` 在 `Signals` 页签和 Data Inspector 里用来确认 reference 已经进入模型。
 
 为了匹配现场 `slrtExplorer` 的参数显示行为，PID、积分限幅、死区和最大跟踪速度都按 `int32` 暴露。`SGV2_POSITION_LOOP_ENABLED` 不再暴露为可调参数，位置环请求内部固定开启，实际运动仍由 `ready_to_run` 和限速门禁保护。`SGV2_POSITION_LOOP_KP/KI/KD` 是千分之一增益整数，例如 `10` 表示实际增益 `0.010`。
 
@@ -843,10 +849,10 @@ data/reference/position_reference_6064.txt
 speed_ff = (position_rate_ref - PositionVelocityBias) / PositionVelocityGain
 ```
 
-当前先采用用户现场假设：`60FF` 速度命令单位就是线速度 `mm/s`，`position_actual_6064` 按 `mm` 理解。因此默认 `PositionVelocityGain = 1`、`PositionVelocityBias = 0`，逆模型前馈近似为直通，线速度饱和值固定为 `6000`：
+当前采用 `60FF` 速度命令近似为线速度 `mm/s` 的现场假设，但 txt 参考文件按 `mm` 小数写入，构建时通过 `PositionUnitMillimetersPerCount6064 = 0.001` 换算成 6064 counts。因此默认 `PositionVelocityGain = 1000`、`PositionVelocityBias = 0`，把 6064 counts/s 的轨迹速度前馈约换算回 `mm/s`，线速度饱和值固定为 `6000`：
 
 ```text
-speed_ff = position_rate_ref
+speed_ff = position_rate_ref / 1000
 ```
 
 如果以后现场发现单位不是 `mm/s`、参数缺失，或者最大跟踪速度无效，这个函数仍可以回退到零速度，避免把错误单位带进现场。

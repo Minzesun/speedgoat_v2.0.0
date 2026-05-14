@@ -11,6 +11,7 @@ writematrix(int32([0; 0; 2; 5]), referencePath, 'FileType', 'text');
 
 target = target_minimal_slrtexplorer();
 target.AxisConfig.DefaultPositionReferenceFile = string(referencePath);
+target.AxisConfig.DefaultPositionUnitMillimetersPerCount6064 = 1;
 
 reference = sgv2.internal.loadPositionReferenceTxt(target);
 
@@ -23,6 +24,24 @@ verifyEqual(testCase, reference.PositionVariableName, "SGV2_POSITION_REFERENCE_V
 verifyEqual(testCase, reference.RateVariableName, "SGV2_POSITION_RATE_REFERENCE_VALUES_6064");
 end
 
+function testReferenceValuesUseMillimetersPerCountScale(testCase)
+tempRoot = tempname;
+mkdir(tempRoot);
+cleanup = onCleanup(@() rmdir(tempRoot, 's')); %#ok<NASGU>
+referencePath = fullfile(tempRoot, 'position_reference_6064.txt');
+writematrix([0; 0.0014; 0.0026; -0.001], referencePath, 'FileType', 'text');
+
+target = target_minimal_slrtexplorer();
+target.AxisConfig.DefaultPositionReferenceFile = string(referencePath);
+target.AxisConfig.DefaultPositionUnitMillimetersPerCount6064 = 0.001;
+
+reference = sgv2.internal.loadPositionReferenceTxt(target);
+
+verifyEqual(testCase, reference.PositionValues6064, int32([0; 1; 3; -1; 0]));
+verifyEqual(testCase, reference.RateValues6064, int32([0; 500; 1000; -2000; 0]));
+verifyEqual(testCase, reference.PositionUnitMillimetersPerCount6064, 0.001);
+end
+
 function testDefaultReferencePathResolvesFromProjectRoot(testCase)
 target = target_minimal_slrtexplorer();
 reference = sgv2.internal.loadPositionReferenceTxt(target);
@@ -33,6 +52,22 @@ verifyEqual(testCase, reference.FilePath, expectedPath);
 verifyGreaterThanOrEqual(testCase, reference.SampleCount, uint32(2));
 verifyEqual(testCase, reference.PositionValues6064(end), int32(0));
 verifyEqual(testCase, reference.RateValues6064(end), int32(0));
+end
+
+function testDefaultReferenceIsHalfHertzSine(testCase)
+target = target_minimal_slrtexplorer();
+reference = sgv2.internal.loadPositionReferenceTxt(target);
+
+positionValues = double(reference.PositionValues6064(:));
+sourceSampleCount = double(reference.SampleCount - uint32(1));
+sourceDurationSeconds = (sourceSampleCount - 1) * reference.SampleTime;
+time = (0:(sourceSampleCount - 1))' .* reference.SampleTime;
+expectedPositionValues = round(1000 .* sin(2 .* pi .* 0.5 .* time));
+
+verifyGreaterThanOrEqual(testCase, max(positionValues), 900);
+verifyLessThanOrEqual(testCase, min(positionValues), -900);
+verifyEqual(testCase, sourceDurationSeconds, 2, 'AbsTol', 1e-12);
+verifyEqual(testCase, positionValues(1:sourceSampleCount), expectedPositionValues);
 end
 
 function testRejectsInvalidReferenceFiles(testCase)

@@ -80,7 +80,10 @@ for k = 1:numel(requiredTokens)
     end
 end
 
-forbiddenTokens = {'SGV2_POSITION_LOOP_ENABLED'};
+forbiddenTokens = { ...
+    'SGV2_POSITION_LOOP_ENABLED'
+    'SGV2_POSITION_REFERENCE_VALUES_6064'
+    'SGV2_POSITION_RATE_REFERENCE_VALUES_6064'};
 for k = 1:numel(forbiddenTokens)
     if contains(paramInfo, forbiddenTokens{k})
         error('sgv2:ApplicationPackageForbiddenTunable', ...

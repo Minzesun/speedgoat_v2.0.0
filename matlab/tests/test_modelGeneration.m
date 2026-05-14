@@ -25,6 +25,9 @@ verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_rate_reference
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_reference_values_6064']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_rate_reference_values_6064']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_reference_feedforward_enabled']) > 0);
+verifyTrue(testCase, getSimulinkBlockHandle([modelName '/reference_play_request']) > 0);
+verifyTrue(testCase, getSimulinkBlockHandle([modelName '/home_to_zero_request']) > 0);
+verifyTrue(testCase, getSimulinkBlockHandle([modelName '/home_to_zero_speed']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_command_6064']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_rate_command_6064']) > 0);
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_loop_enabled_request']) > 0);
@@ -35,6 +38,12 @@ verifyTrue(testCase, getSimulinkBlockHandle([modelName '/max_tracking_speed']) >
 verifyTrue(testCase, getSimulinkBlockHandle([modelName '/position_loop_speed_command_60ff_delay']) > 0);
 verifyEqual(testCase, get_param([modelName '/position_reference_feedforward_enabled'], 'Value'), ...
     char(target.Tunables.PositionReferenceFeedforwardEnabled));
+verifyEqual(testCase, get_param([modelName '/reference_play_request'], 'Value'), ...
+    char(target.Tunables.ReferencePlayRequest));
+verifyEqual(testCase, get_param([modelName '/home_to_zero_request'], 'Value'), ...
+    char(target.Tunables.HomeToZeroRequest));
+verifyEqual(testCase, get_param([modelName '/home_to_zero_speed'], 'Value'), ...
+    char(target.Tunables.HomeToZeroSpeed));
 verifyNotEqual(testCase, get_param([modelName '/position_command_6064'], 'BlockType'), 'Constant');
 verifyNotEqual(testCase, get_param([modelName '/position_rate_command_6064'], 'BlockType'), 'Constant');
 verifyEqual(testCase, get_param([modelName '/position_loop_enabled_request'], 'BlockType'), 'Constant');

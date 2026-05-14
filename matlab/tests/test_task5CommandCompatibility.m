@@ -89,4 +89,6 @@ verifyTrue(testCase, contains(paramInfo, 'SGV2_POSITION_LOOP_KP'));
 verifyTrue(testCase, contains(paramInfo, 'SGV2_POSITION_LOOP_KI'));
 verifyTrue(testCase, contains(paramInfo, 'SGV2_POSITION_LOOP_KD'));
 verifyTrue(testCase, contains(paramInfo, 'SGV2_MAX_TRACKING_SPEED'));
+verifyFalse(testCase, contains(paramInfo, 'SGV2_POSITION_REFERENCE_VALUES_6064'));
+verifyFalse(testCase, contains(paramInfo, 'SGV2_POSITION_RATE_REFERENCE_VALUES_6064'));
 end

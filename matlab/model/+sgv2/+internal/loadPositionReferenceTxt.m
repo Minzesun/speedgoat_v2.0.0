@@ -36,7 +36,15 @@ if ~isfinite(sampleTime) || sampleTime <= 0
         'Target sample time must be positive and finite.');
 end
 
-positionValues = int32(round(values(:)));
+positionUnitMillimetersPerCount6064 = localPositionUnitMillimetersPerCount6064(target);
+positionValuesDouble = values(:) ./ positionUnitMillimetersPerCount6064;
+if any(positionValuesDouble < double(intmin('int32'))) || ...
+        any(positionValuesDouble > double(intmax('int32')))
+    error('sgv2:PositionReferenceFileInvalid', ...
+        'Position reference values exceed int32 after unit conversion: %s', referencePath);
+end
+
+positionValues = int32(round(positionValuesDouble));
 positionValues = [positionValues; int32(0)];
 
 rateValues = zeros(size(positionValues), 'int32');
@@ -48,6 +56,7 @@ end
 reference = struct( ...
     'FilePath', string(referencePath), ...
     'SampleTime', sampleTime, ...
+    'PositionUnitMillimetersPerCount6064', positionUnitMillimetersPerCount6064, ...
     'PositionValues6064', positionValues, ...
     'RateValues6064', rateValues, ...
     'SampleCount', uint32(numel(positionValues)), ...
@@ -70,4 +79,17 @@ end
 
 defaults = project_defaults();
 referencePath = char(fullfile(defaults.ProjectRoot, pathValue));
+end
+
+function unit = localPositionUnitMillimetersPerCount6064(target)
+if isfield(target.AxisConfig, 'DefaultPositionUnitMillimetersPerCount6064')
+    unit = double(target.AxisConfig.DefaultPositionUnitMillimetersPerCount6064);
+else
+    unit = 1;
+end
+
+if ~isfinite(unit) || unit <= 0
+    error('sgv2:PositionReferenceUnitInvalid', ...
+        'PositionUnitMillimetersPerCount6064 must be positive and finite.');
+end
 end

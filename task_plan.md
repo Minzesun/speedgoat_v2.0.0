@@ -145,7 +145,7 @@ Position Tracking PT-5 is wired into Simulink with conservative defaults. Baseli
 - [x] 建立离线/可测试入口：`sgv2.control.computeInverseFeedforward(position_rate_ref, params)`
 - [x] 增加方向符号、死区补偿、速度限幅和无效模型回退
 - [x] 将线速度饱和值设为 `6000`
-- [x] 采用用户指定工作假设：`PositionVelocityGain = 1`、`PositionVelocityBias = 0`、`PositionUnitMillimetersPerCount6064 = 1`
+- [x] 采用当前参考信号的初始单位假设：`PositionVelocityGain = 1000`、`PositionVelocityBias = 0`、`PositionUnitMillimetersPerCount6064 = 0.001`
 - [x] 明确逆模型只产生速度前馈，不直接绕过现有 CiA402/CSV 起机门禁
 - [x] 将辨识参数放入配置层：`PositionVelocityGain`、`PositionVelocityBias`、`CommandDeadband`、`CommandDelaySamples`、`MaxTrackingSpeed`、`PositionUnitMillimetersPerCount6064`
 - [x] 将 PT-4 操作说明同步到 `SPEEDGOAT_V2_MINIMAL_LOGIC.md` 和 signal/reference 文档
